@@ -1,0 +1,148 @@
+        <div class="bt-main">
+          <div class="bt-name" id="billCustName">—</div>
+          <div class="bt-meta" id="billMeta">—</div>
+        </div>
+        <input id="billPhone" placeholder="08xx xxxx xxxx" inputmode="tel" autocomplete="off">
+      </div>
+
+      <div class="field">
+        <label>Nada Pesan</label>
+        <div class="bill-tone" id="billToneSeg">
+          <button class="active" data-t="halus" onclick="setBillTone('halus')">Halus</button>
+          <button data-t="normal" onclick="setBillTone('normal')">Normal</button>
+          <button data-t="tegas" onclick="setBillTone('tegas')">Tegas</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Isi Pesan <span style="font-weight:600;color:var(--muted)">(bisa diedit)</span></label>
+        <textarea class="bill-preview" id="billMessage" spellcheck="false"></textarea>
+        <div class="hint">Nomor rekening &amp; nominal transfer otomatis disertakan bila metode pembayaran Transfer.</div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="modal-btn" onclick="copyBillMessage()">Salin Pesan</button>
+      <div class="modal-foot-right">
+        <button class="modal-btn" onclick="closeBillReminder()">Batal</button>
+        <button class="modal-btn primary" onclick="sendBillReminder()">Kirim via WhatsApp</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- BACKUP & RESTORE MODAL -->
+<div class="modal-backdrop" id="backupModal">
+  <div class="modal">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title">Backup &amp; Restore</div>
+        <div class="modal-sub">Simpan seluruh data ke satu file JSON</div>
+      </div>
+      <button class="modal-close" onclick="closeBackup()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+
+    <div class="modal-body">
+
+      <!-- DATA SAAT INI -->
+      <div class="backup-section">
+        <div class="backup-section-title">
+          <svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"/></svg>
+          Data Tersimpan di Browser Ini
+        </div>
+        <div class="backup-stats" id="backupStats">
+          <div class="backup-stat"><div class="num" id="statHistory">0</div><div class="lbl">INVOICE</div></div>
+          <div class="backup-stat"><div class="num" id="statCustomers">0</div><div class="lbl">PELANGGAN</div></div>
+          <div class="backup-stat"><div class="num" id="statCatalog">0</div><div class="lbl">PRODUK</div></div>
+          <div class="backup-stat"><div class="num" id="statExtras">0</div><div class="lbl">TTD/STEMPEL</div></div>
+        </div>
+        <div class="stor-wrap">
+          <div class="stor-head">
+            <b>Penyimpanan Browser</b>
+            <span><span id="storText">0 B</span> · <span id="storPct">0%</span> dari ±5 MB</span>
+          </div>
+          <div class="stor-track"><div class="stor-fill" id="storFill" style="width:0%"></div></div>
+          <div class="stor-origin" id="storOrigin"></div>
+        </div>
+
+        <!-- Muncul bila data kosong — biasanya karena alamat berbeda -->
+        <div class="backup-note warn" id="emptyDataWarn" style="display:none">
+          <b>Data di alamat ini masih kosong.</b>
+          <br><br>
+          Data tersimpan <b>per alamat</b>. Bila sebelumnya Anda membuka aplikasi dengan cara
+          lain — misalnya klik dua kali berkas (<code>file://</code>) atau nomor port berbeda —
+          data lama Anda <b>tidak hilang</b>, hanya tersimpan di alamat itu.
+          <br><br>
+          <b>Cara memindahkannya:</b>
+          <br>1. Buka aplikasi dengan cara lama
+          <br>2. Backup &amp; Restore → <b>Unduh Backup (JSON)</b>
+          <br>3. Kembali ke alamat ini
+          <br>4. Seret berkas backup ke kotak <b>Pulihkan dari Backup</b> di bawah
+        </div>
+        <div class="backup-meta" id="backupLastInfo">Belum pernah membuat backup</div>
+        <div class="app-version">Versi aplikasi <b id="appVersionText">—</b></div>
+      </div>
+
+      <div class="backup-divider"></div>
+
+      <!-- BUAT BACKUP -->
+      <div class="backup-section">
+        <div class="backup-section-title">
+          <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Buat Backup
+        </div>
+        <div class="backup-note">
+          File backup berisi <b>semua data</b>: riwayat invoice, daftar pelanggan, katalog produk, pengaturan perusahaan, tanda tangan &amp; stempel, nomor urut invoice, dan draft yang sedang dikerjakan. Simpan file ini di Google Drive / email agar aman.
+        </div>
+        <div class="backup-actions">
+          <button class="modal-btn primary" onclick="exportFullBackup()">
+            <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Unduh Backup (JSON)
+          </button>
+        </div>
+      </div>
+
+      <div class="backup-divider"></div>
+
+      <!-- BACKUP CLOUD -->
+      <div class="backup-section">
+        <div class="cloud-head">
+          <div class="backup-section-title" style="margin:0">
+            <svg viewBox="0 0 24 24"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>
+            Backup Otomatis ke Cloud
+          </div>
+          <span class="cloud-badge off" id="cloudBadge"><span class="dot"></span><span id="cloudBadgeText">Belum diatur</span></span>
+        </div>
+
+        <div class="cloud-help">
+          Snapshot JSON dikirim ke <b>Supabase Storage</b> secara berkala. localStorage tetap jadi penyimpanan utama, jadi aplikasi tetap ringan &amp; jalan offline — cloud hanya jaring pengaman.
+          <br><br>
+          <b>Berbeda dengan Sinkronisasi Katalog di bawah.</b> Backup menyimpan <i>berkas cadangan</i> ke Storage (pakai bucket <b>invoice-backup</b>); sinkronisasi membagikan <i>katalog produk</i> antar PC lewat Database (pakai tabel <b>pp_products</b>). Keduanya berjalan sendiri-sendiri.
+        </div>
+
+        <div class="cloud-toggle">
+          <input type="checkbox" id="cloudAutoToggle" onchange="toggleCloudAuto()">
+          <div>
+            <label for="cloudAutoToggle">Aktifkan backup otomatis</label>
+            <div class="sub">Mengunggah saat invoice disimpan &amp; setiap <span id="cloudIntervalLabel">10</span> menit bila ada perubahan.</div>
+          </div>
+        </div>
+
+        <div class="backup-note warn" id="cloudErrBox" style="display:none">
+          <b>Backup terakhir gagal</b>
+          <div style="font-size:11px;margin-top:6px;font-family:ui-monospace,monospace;word-break:break-word" id="cloudErrText"></div>
+          <div style="font-size:10.5px;margin-top:5px;opacity:.8">Terjadi pada <span id="cloudErrTime"></span></div>
+          <div style="font-size:11px;margin-top:8px">
+            Penyebab tersering: <b>bucket belum dibuat</b> atau <b>izin aksesnya belum dipasang</b>.
+            Periksa nama bucket di <b>Pengaturan Koneksi</b>, lalu klik <b>Backup Sekarang</b> untuk mencoba lagi.
+          </div>
+        </div>
+
+        <div class="backup-actions">
+          <button class="modal-btn" onclick="toggleCloudConfig()" id="cloudConfigBtn">Pengaturan Koneksi</button>
+          <button class="modal-btn" onclick="cloudBackupNow()" id="cloudBackupBtn">
+            <svg viewBox="0 0 24 24"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/><polyline points="9 13 12 10 15 13"/><line x1="12" y1="10" x2="12" y2="17"/></svg>
+            Backup Sekarang
+          </button>
+          <button class="modal-btn" onclick="loadCloudSnapshots()" id="cloudListBtn">Lihat Snapshot</button>
+        </div>
+

@@ -1,0 +1,29 @@
+/* CSS PART 05/10 - MODALS */
+.modal-backdrop{position:fixed;inset:0;z-index:50;display:none;align-items:center;justify-content:center;padding:20px;background:rgba(9,36,54,.42);backdrop-filter:blur(6px)}
+.modal-backdrop.open{display:flex}
+.modal{width:100%;max-width:560px;max-height:88vh;overflow:auto;background:#fff;border-radius:16px;border:1px solid rgba(255,255,255,.8);box-shadow:0 40px 90px rgba(9,36,54,.28);animation:paperIn .28s ease both}
+/* Modal Pengaturan memakai tab: kepala & tab dibuat tetap,
+   hanya isi panel yang menggulir. Ukurannya bisa ditarik oleh
+   pengguna lewat pegangan di sudut kanan bawah. */
+#settingsModal .modal{
+  display:flex;flex-direction:column;overflow:hidden;
+  max-width:720px;width:min(720px,96vw);
+  resize:both;min-width:340px;min-height:380px;max-height:92vh;
+}
+#settingsModal .modal-head,#settingsModal .tabs,
+#settingsModal .settings-status,#settingsModal .modal-foot{flex:none}
+#settingsModal .modal-body{overflow-y:auto;min-height:0;flex:1}
+/* Pegangan ukur di sudut kanan bawah */
+#settingsModal .modal-foot{position:relative}
+#settingsModal .modal-foot::after{
+  content:"";position:absolute;right:5px;bottom:5px;width:12px;height:12px;
+  pointer-events:none;opacity:.5;
+  background:
+    linear-gradient(135deg,transparent 45%,var(--muted) 45%,var(--muted) 58%,transparent 58%),
+    linear-gradient(135deg,transparent 68%,var(--muted) 68%,var(--muted) 81%,transparent 81%);
+}
+body.theme-dark #settingsModal .modal-foot::after,
+body.theme-glass #settingsModal .modal-foot::after{opacity:.45}
+@media (max-width:620px){ #settingsModal .modal{resize:none} }
+.modal-head{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:18px 22px;border-bottom:1px solid #e9eff0;background:linear-gradient(135deg, rgba(7,157,143,.1), rgba(255,255,255,0))}
+

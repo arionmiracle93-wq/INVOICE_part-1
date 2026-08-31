@@ -1,0 +1,25 @@
+.top-decoration{position:absolute;top:0;left:0;right:0;height:56px;pointer-events:none;z-index:0;overflow:hidden}
+.shape-yellow,.shape-green,.shape-mist{position:absolute;top:0;left:0;height:15px}
+.shape-yellow{width:45%;background:var(--yellow);clip-path:polygon(0 0,100% 0,92% 100%,0 100%)}
+.shape-green{width:36%;background:var(--teal);clip-path:polygon(0 0,100% 0,82% 100%,0 100%)}
+.shape-mist{right:-120px;left:auto;width:38%;height:56px;background:linear-gradient(135deg, rgba(7,157,143,.1), transparent);clip-path:polygon(28% 0,100% 0,78% 100%,0 100%)}
+
+.head{display:flex;justify-content:space-between;align-items:flex-start;gap:28px;position:relative;z-index:1;padding-top:14px;padding-bottom:14px}
+.brand{display:flex;gap:16px;align-items:flex-start;min-width:0}
+.logo{width:62px;height:62px;flex:none;display:flex;align-items:center;justify-content:center;margin-top:1px}
+.brand-text{min-width:0;display:flex;flex-direction:column;gap:9px}
+/* Tipografi nama perusahaan:
+   "Pamulang" tegas (bold) sebagai jangkar visual,
+   "Printing" lebih ringan + sedikit letter-spacing supaya terasa
+   lapang. Jarak bobot sengaja hanya 2 tingkat (700 vs 400) dan
+   dijembatani spasi huruf agar tidak terkesan jomplang. */
+.company-name{display:flex;align-items:baseline;gap:8px;outline:none;font-size:23px;letter-spacing:-.5px;line-height:1.15}
+.company-name .navy-text{color:var(--navy);font-weight:800}
+.company-name .teal-text{color:var(--teal);font-weight:400;letter-spacing:.3px}
+.contact-group{display:flex;flex-direction:column;gap:7px}
+.contact{display:flex;align-items:flex-start;gap:10px;color:#40546b;font-size:13px}
+.contact-icon{flex:none;color:var(--teal);display:flex;align-items:center;justify-content:center;margin-top:1px}
+.contact-icon svg{display:block}
+.contact-lines{display:flex;flex-direction:column;gap:2px;justify-content:center}
+.contact input{width:292px;border:none;outline:none;padding:0;margin:0;background:transparent;color:#40546b;font:inherit;line-height:17px}
+

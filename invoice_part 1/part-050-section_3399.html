@@ -1,0 +1,149 @@
+      <!-- ══ TAB: DOKUMEN ══ -->
+      <div class="tab-panel" data-panel="dokumen">
+        <div class="sec-head">
+          <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Berkas Unduhan <span class="line"></span>
+        </div>
+        <div class="field">
+          <div class="cloud-toggle">
+            <input type="checkbox" id="setAutoJson">
+            <div>
+              <label for="setAutoJson">Unduh file JSON setiap menyimpan</label>
+              <div class="sub">Bila dimatikan, folder unduhan tetap bersih. Invoice tetap tersimpan di Riwayat.</div>
+            </div>
+          </div>
+          <div class="hint">
+            File JSON per invoice sebenarnya <b>salinan keempat</b> — datanya sudah ada di Riwayat, file Backup, dan Cloud.
+            Anda tetap bisa mengunduh satu invoice kapan pun lewat tombol <b>JSON</b> di menu Riwayat Invoice.
+          </div>
+        </div>
+
+        <div class="sec-head">
+          <svg viewBox="0 0 24 24"><path d="M20 11.08V8l-6-6H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h6"/><path d="M14 3v5h5"/><path d="m19 16-2 3h4l-2 3"/></svg>
+          Tanda Tangan &amp; Stempel <span class="line"></span>
+        </div>
+        <div class="hint" style="margin-top:-6px">Muncul di bagian bawah invoice serta ikut tercetak pada PDF.</div>
+      <div class="field-grid">
+        <div class="field">
+          <label>Tanda Tangan</label>
+          <input type="file" id="setSignatureFile" accept="image/png,image/jpeg">
+          <div class="file-input-wrapper" onclick="document.getElementById('setSignatureFile').click()">
+            <span class="file-btn">Pilih File</span>
+            <span class="file-name">Belum ada file</span>
+          </div>
+          <div class="sig-preview" id="sigPreview"><img id="sigPreviewImg"><button class="modal-btn ghost-red" onclick="removeSignature()">Hapus</button></div>
+          <div class="hint">PNG/JPG, maks 800KB.</div>
+        </div>
+        <div class="field">
+          <label>Stempel</label>
+          <input type="file" id="setStampFile" accept="image/png,image/jpeg">
+          <div class="file-input-wrapper" onclick="document.getElementById('setStampFile').click()">
+            <span class="file-btn">Pilih File</span>
+            <span class="file-name">Belum ada file</span>
+          </div>
+          <div class="sig-preview" id="stampPreview"><img id="stampPreviewImg"><button class="modal-btn ghost-red" onclick="removeStamp()">Hapus</button></div>
+          <div class="hint">PNG transparan disarankan, maks 800KB.</div>
+        </div>
+      </div>
+      </div>
+
+    </div>
+    <div class="settings-status" id="settingsStatus"></div>
+    <div class="modal-foot">
+      <button class="modal-btn ghost-red" onclick="resetSettings()">
+        <svg viewBox="0 0 24 24"><path d="M3 2v6h6"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L3 8"/></svg>
+        Kembalikan Default
+      </button>
+      <div class="modal-foot-right">
+        <button class="modal-btn" onclick="closeSettings()">Batal</button>
+        <button class="modal-btn primary" onclick="saveSettings()">
+          <svg viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+          Simpan Pengaturan
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- HISTORY MODAL -->
+<div class="modal-backdrop" id="historyModal">
+  <div class="modal">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title">Riwayat Invoice</div>
+        <div class="modal-sub">Invoice tersimpan di browser ini</div>
+      </div>
+      <button class="modal-close" onclick="closeHistory()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <div class="ar-bar" id="arBar">
+        <div class="ar-cell due"><div class="ar-num" id="arDueAmt">Rp 0</div><div class="ar-lbl">Belum Dibayar</div></div>
+        <div class="ar-cell late"><div class="ar-num" id="arLateAmt">Rp 0</div><div class="ar-lbl">Lewat Tempo</div></div>
+        <div class="ar-cell paid"><div class="ar-num" id="arPaidAmt">Rp 0</div><div class="ar-lbl">Sudah Lunas</div></div>
+      </div>
+
+      <div class="hist-filters">
+        <button class="hf-btn active" data-f="all" onclick="setHistoryFilter('all')">Semua</button>
+        <button class="hf-btn" data-f="due" onclick="setHistoryFilter('due')">Belum Lunas</button>
+        <button class="hf-btn" data-f="late" onclick="setHistoryFilter('late')">Lewat Tempo</button>
+        <button class="hf-btn" data-f="paid" onclick="setHistoryFilter('paid')">Lunas</button>
+        <span class="hist-count" id="histCount"></span>
+      </div>
+
+      <div class="recon-box">
+        <div class="recon-title">
+          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          Cocokkan Mutasi Bank
+        </div>
+        <input class="recon-input" id="historySearch" placeholder="Ketik nominal / 3 digit kode / no. invoice / nama" autocomplete="off" oninput="renderHistory()">
+        <div class="recon-hint">Contoh: masuk <b>Rp 90.347</b> di mutasi — ketik <b>90347</b> atau <b>347</b> untuk menemukan invoicenya.</div>
+      </div>
+      <div class="history-tools">
+        <label>Rekap Bulan</label>
+        <input type="month" class="history-month" id="historyMonth">
+        <button class="modal-btn" onclick="exportHistoryCSV()">Export Rekap CSV</button>
+        <button class="modal-btn ghost-red" onclick="clearHistory()">Hapus Semua Riwayat</button>
+      </div>
+      <div class="history-list" id="historyList"></div>
+    </div>
+    <div class="modal-foot">
+      <div></div>
+      <button class="modal-btn" onclick="closeHistory()">Tutup</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL SKRIP SQL -->
+<div class="modal-backdrop" id="sqlModal" style="z-index:58">
+  <div class="modal" style="max-width:620px">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title">Membuat Tabel di Supabase</div>
+        <div class="modal-sub">Sekali saja — tidak perlu impor CSV</div>
+      </div>
+      <button class="modal-close" onclick="closeSqlModal()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="modal-body">
+
+      <div class="backup-note">
+        <b>Skrip di bawah sudah tersalin otomatis.</b> Anda tinggal menempelkannya di Supabase.
+        Skrip ini hanya <i>membuat wadah kosong</i> — produk Anda akan terisi sendiri saat sinkronisasi berjalan.
+      </div>
+
+      <div class="sec-head">
+        <svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+        Langkah <span class="line"></span>
+      </div>
+      <ol class="gsteps" style="font-size:12.5px;line-height:1.9">
+        <li>Klik <b>Buka SQL Editor</b> di bawah — tab Supabase terbuka</li>
+        <li>Klik area kosong pada editor, tekan <b>Ctrl+V</b> untuk menempel</li>
+        <li>Klik tombol <b>Run</b> (atau tekan <b>Ctrl+Enter</b>)</li>
+        <li>Pastikan muncul tulisan <b>Success</b> di bawah editor</li>
+        <li>Kembali ke sini, tutup jendela ini</li>
+        <li>Centang <b>Aktifkan sinkronisasi katalog</b></li>
+      </ol>
+
+      <div class="field">
+        <label>Skrip SQL</label>
+        <textarea id="sqlText" readonly spellcheck="false"
+          style="min-height:210px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;line-height:1.55"

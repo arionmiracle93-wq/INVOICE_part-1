@@ -1,0 +1,97 @@
+.pdf-export-host .pay-left{flex:1!important;min-width:0!important}
+.pdf-export-host .pay-qris{width:158px!important;flex:none!important;background:#fff!important}
+.pdf-export-host .pay-qris img{width:126px!important;height:126px!important}
+.pdf-export-host .bank-copy-btn{display:none!important}
+.pdf-export-host .bank-item{background:#fff!important}
+.pdf-export-host .bank-no{font-size:13px!important}
+.pdf-export-host .ptb-amount{font-size:17px!important}
+/* Dekorasi atas: pita kuning + hijau saja, kabut samping dibuang */
+.pdf-export-host .top-decoration{display:block!important;height:44px!important}
+.pdf-export-host .shape-yellow{display:block!important;background:#f5b41b!important;height:12px!important}
+.pdf-export-host .shape-green{display:block!important;background:#079d8f!important;height:12px!important}
+.pdf-export-host .shape-mist{display:none!important}
+/* Kunci warna tema Light pada klon apa pun tema yang sedang aktif.
+   Bayangan & blur dimatikan total supaya hasil PDF flat 2D. */
+.pdf-export-host,.pdf-export-host *{
+  backdrop-filter:none!important;box-shadow:none!important;
+  filter:none!important;text-shadow:none!important;
+}
+.pdf-export-host .invoice-frame{background:#fff!important;border:none!important}
+
+/* ===== PANDUAN PEMBAYARAN (helper untuk pengguna awam) ===== */
+.guide-box{border:1px solid rgba(7,157,143,.2);border-radius:12px;background:linear-gradient(160deg,rgba(7,157,143,.07),rgba(7,157,143,.02));overflow:hidden}
+.guide-head{display:flex;align-items:center;gap:9px;padding:12px 14px;cursor:pointer;user-select:none}
+.guide-head:hover{background:rgba(7,157,143,.05)}
+.guide-head .gi{width:26px;height:26px;flex:none;border-radius:8px;background:var(--teal);color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:850}
+.guide-head .gt{flex:1;min-width:0}
+.guide-head .gt b{display:block;font-size:12.5px;font-weight:850;color:var(--navy)}
+.guide-head .gt span{display:block;font-size:10.5px;color:var(--muted);margin-top:1px}
+.guide-head .gc{flex:none;color:var(--teal);transition:transform .2s ease}
+.guide-head .gc svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;display:block}
+.guide-box.open .gc{transform:rotate(180deg)}
+.guide-body{display:none;padding:0 14px 14px;flex-direction:column;gap:12px}
+.guide-box.open .guide-body{display:flex}
+.gcard{padding:11px 13px;border-radius:10px;background:#fff;border:1px solid rgba(17,47,82,.08)}
+.gcard-t{display:flex;align-items:center;gap:7px;font-size:11.5px;font-weight:850;color:var(--navy);margin-bottom:6px}
+.gcard-t .tag{font-size:9px;font-weight:850;padding:2px 7px;border-radius:999px;letter-spacing:.3px}
+.gcard-t .tag.easy{background:rgba(7,157,143,.15);color:#067d72}
+.gcard-t .tag.adv{background:rgba(245,180,27,.22);color:#8a6206}
+.gcard p{margin:0 0 6px;font-size:11.5px;line-height:1.6;color:var(--ink)}
+.gcard p:last-child{margin-bottom:0}
+.gcard b{font-weight:850}
+.gsim{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:9px 11px;border-radius:8px;background:var(--teal-pale);font-size:11.5px;margin:7px 0;font-variant-numeric:tabular-nums}
+.gsim .ar{color:var(--muted);font-weight:850}
+.gsim .hl{font-weight:850;color:var(--teal-dark)}
+.gsim .hl u{text-decoration:none;background:rgba(245,180,27,.45);padding:0 3px;border-radius:3px}
+.gsteps{margin:0;padding-left:17px;font-size:11.5px;line-height:1.75;color:var(--ink)}
+.gsteps li{margin-bottom:2px}
+.gmuted{font-size:10.5px;color:var(--muted);line-height:1.55}
+body.theme-dark .guide-box,body.theme-glass .guide-box{background:rgba(46,207,186,.07);border-color:rgba(46,207,186,.22)}
+body.theme-dark .guide-head:hover,body.theme-glass .guide-head:hover{background:rgba(46,207,186,.08)}
+body.theme-dark .guide-head .gt b,body.theme-glass .guide-head .gt b,
+body.theme-dark .gcard-t,body.theme-glass .gcard-t{color:#eef5f4}
+body.theme-dark .guide-head .gt span,body.theme-glass .guide-head .gt span,
+body.theme-dark .gmuted,body.theme-glass .gmuted{color:#8fa9a6}
+body.theme-dark .gcard,body.theme-glass .gcard{background:rgba(255,255,255,.045);border-color:rgba(255,255,255,.09)}
+body.theme-dark .gcard p,body.theme-glass .gcard p,
+body.theme-dark .gsteps,body.theme-glass .gsteps{color:#cfe6e3}
+body.theme-dark .gsim,body.theme-glass .gsim{background:rgba(46,207,186,.14)}
+body.theme-dark .gsim .hl,body.theme-glass .gsim .hl{color:#3ee0c9}
+body.theme-dark .gsim .ar,body.theme-glass .gsim .ar{color:#8fa9a6}
+
+/* ===== EDITOR KATALOG VISUAL ===== */
+.cat-toolbar{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:8px}
+.cat-toolbar .modal-btn{padding:7px 11px;font-size:11.5px}
+.cat-toolbar .spacer{flex:1}
+.cat-mode{border:1px solid #dfe8e8;background:#fff;color:var(--muted);border-radius:8px;padding:6px 10px;font:inherit;font-size:10.5px;font-weight:800;cursor:pointer}
+.cat-mode:hover{background:#f3f8f8}
+.cat-mode.active{background:var(--teal);border-color:var(--teal);color:#fff}
+.cat-search{width:100%;border:1px solid #dde5e6;border-radius:9px;padding:9px 11px;font:inherit;font-size:12.5px;color:var(--ink);background:#fbfdfd;outline:none;margin-bottom:8px}
+.cat-search:focus{border-color:var(--teal);box-shadow:0 0 0 3px rgba(7,157,143,.12)}
+.cat-list{display:flex;flex-direction:column;gap:5px;max-height:290px;overflow:auto;padding:2px}
+/* Kolom katalog. Jarak antar kolom dilebarkan dan judul dijaga
+   satu baris supaya "HARGA" tidak berdempetan dengan kolom
+   harga bertingkat di sebelahnya. */
+.cat-head,.cat-item{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1.15fr) 86px minmax(0,1.2fr) 26px;gap:10px;align-items:center}
+.cat-head{padding:0 2px 4px;font-size:9.5px;font-weight:850;letter-spacing:.3px;text-transform:uppercase;color:var(--muted)}
+.cat-head > div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cat-head .h-price{text-align:right;padding-right:2px}
+.cat-item{padding:6px;border:1px solid #e6eded;border-radius:9px;background:#fbfdfd}
+.cat-item:focus-within{border-color:var(--teal);background:#fff}
+.cat-item input{width:100%;min-width:0;border:1px solid transparent;border-radius:7px;padding:7px 8px;font:inherit;font-size:12px;color:var(--ink);background:#fff;outline:none;transition:border-color .14s ease}
+.cat-item input:focus{border-color:var(--teal);box-shadow:0 0 0 2px rgba(7,157,143,.1)}
+.cat-item input.c-name{font-weight:750}
+.cat-item input.c-price{text-align:right;font-variant-numeric:tabular-nums}
+.c-tier-wrap{position:relative;min-width:0}
+/* Ruang kanan disediakan untuk badge agar teks tidak tertimpa */
+.c-tier-wrap input{padding-right:62px!important;font-size:11px!important;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;text-overflow:ellipsis}
+.c-tier-badge{position:absolute;right:5px;top:50%;transform:translateY(-50%);font-size:9px;font-weight:850;padding:2px 6px;border-radius:999px;pointer-events:none;background:rgba(17,47,82,.09);color:var(--muted);white-space:nowrap;max-width:54px;overflow:hidden;text-overflow:ellipsis}
+.c-tier-badge.on{background:rgba(7,157,143,.16);color:#067d72}
+.c-tier-badge.bad{background:rgba(239,61,67,.16);color:#c02a30}
+.c-del{border:none;background:transparent;color:var(--red);cursor:pointer;padding:5px;border-radius:6px;display:flex;align-items:center;justify-content:center}
+.c-del:hover{background:#fff0f1}
+.c-del svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round}
+.cat-empty{padding:22px 12px;text-align:center;color:var(--muted);font-size:12px;line-height:1.6}
+.cat-foot{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:8px;flex-wrap:wrap}
+.cat-count{font-size:10.5px;color:var(--muted)}
+body.theme-dark .cat-item,body.theme-glass .cat-item{background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.09)}

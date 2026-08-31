@@ -1,0 +1,121 @@
+      <!-- ══ TAB: PEMBAYARAN ══ -->
+      <div class="tab-panel" data-panel="bayar">
+      <div class="guide-box" id="payGuide">
+        <div class="guide-head" onclick="document.getElementById('payGuide').classList.toggle('open')">
+          <div class="gi">?</div>
+          <div class="gt">
+            <b>Bingung bedanya Kode Unik dan QRIS?</b>
+            <span>Klik untuk baca panduan singkat — 1 menit</span>
+          </div>
+          <div class="gc"><svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg></div>
+        </div>
+
+        <div class="guide-body">
+          <div class="gcard">
+            <div class="gcard-t">💳 Kode Unik <span class="tag easy">MUDAH · MULAI DARI SINI</span></div>
+            <p>Ini <b>bukan cara bayar</b>, tapi cara Anda <b>mengenali siapa yang sudah transfer</b>.</p>
+            <p>Total invoice Rp 90.000, pelanggan diminta transfer <b>Rp 90.347</b>. Tiga angka terakhir itu sidik jari invoice.</p>
+            <div class="gsim">
+              <span>Total <b>Rp 90.000</b></span>
+              <span class="ar">→</span>
+              <span class="hl">Transfer Rp 90.<u>347</u></span>
+            </div>
+            <p><b>Kenapa perlu?</b> Kalau 5 pelanggan sama-sama transfer Rp 90.000, Anda tidak tahu mana punya siapa — nama pengirim sering beda (pakai rekening suami, istri, atau cuma tertulis "MUHAMMAD"). Dengan kode unik, langsung ketahuan tanpa perlu japri satu-satu.</p>
+            <p class="gmuted">Praktik ini biasa dipakai Tokopedia &amp; Shopee. Selisih Rp 347 dianggap pembulatan.</p>
+            <p><b>Cara pakai:</b> cukup centang kotak <b>“Aktifkan kode unik”</b> di bawah. Tidak perlu daftar apa pun — pakai rekening bank yang sudah Anda punya.</p>
+          </div>
+
+          <div class="gcard">
+            <div class="gcard-t">📱 QRIS <span class="tag adv">PERLU PUNYA QRIS TOKO</span></div>
+            <p>Ini <b>cara bayarnya</b> — kotak-kotak hitam-putih yang pelanggan scan pakai GoPay, OVO, DANA, atau m-banking.</p>
+            <p>Biasanya toko sudah punya QRIS cetak yang ditempel di meja kasir. Masalahnya, QRIS cetak itu <b>statis</b> — pelanggan harus mengetik nominal sendiri, dan sering salah ketik.</p>
+            <p>Aplikasi ini menyisipkan nominal invoice ke dalam QR, jadi pelanggan tinggal scan dan bayar — <b>nominal sudah terkunci otomatis</b>.</p>
+            <p><b>Cara mendapatkan kodenya:</b></p>
+            <ol class="gsteps">
+              <li>Buka aplikasi pembaca QR biasa di HP <span class="gmuted">(jangan pakai aplikasi bank — itu langsung buka pembayaran)</span></li>
+              <li>Scan QRIS cetak milik toko Anda</li>
+              <li>Muncul teks panjang diawali <b>00020101021126...</b></li>
+              <li>Salin seluruhnya, tempel ke kotak QRIS di bawah</li>
+              <li>Klik <b>Periksa Payload</b> untuk memastikan benar</li>
+            </ol>
+            <p class="gmuted">Belum punya QRIS toko? Daftar gratis lewat bank Anda, atau GoPay/OVO/DANA Merchant. Kalau belum ada, biarkan kosong saja — kode unik sudah cukup.</p>
+          </div>
+
+          <div class="gcard">
+            <div class="gcard-t">✅ Keduanya bisa dipakai bersamaan</div>
+            <p>Saat membuat invoice, pilih di dropdown <b>Metode Pembayaran</b>:</p>
+            <ol class="gsteps">
+              <li><b>Transfer</b> → invoice menampilkan nomor rekening + nominal berkode unik</li>
+              <li><b>QRIS</b> → invoice menampilkan gambar QR dengan nominal tertanam</li>
+              <li><b>Cash</b> → tidak menampilkan keduanya</li>
+            </ol>
+            <p style="margin-top:7px"><b>Saat cek mutasi bank:</b> buka menu <b>Riwayat Invoice</b>, ketik 3 angka terakhir yang masuk (misal <b>347</b>) di kotak pencarian — invoicenya langsung ketemu.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Rekening Bank</label>
+        <div class="bank-editor" id="bankEditor"></div>
+        <div class="catalog-tools" style="margin-top:8px">
+          <button class="modal-btn" onclick="addBankRow()">+ Tambah Rekening</button>
+        </div>
+        <div class="hint">Urutan: Nama Bank · Nomor Rekening · Atas Nama. Rekening pertama ditampilkan paling atas di invoice.</div>
+      </div>
+
+      <div class="field">
+        <label>QRIS (payload statis)</label>
+        <textarea id="setQris" rows="3" placeholder="00020101021126..." spellcheck="false" style="font-family:ui-monospace,monospace;font-size:11px;min-height:70px"></textarea>
+        <div class="hint">
+          Scan QRIS cetak milik toko pakai aplikasi pembaca QR, salin <b>teks mentahnya</b> ke sini. Aplikasi akan menyisipkan nominal invoice secara otomatis (QRIS dinamis), jadi pelanggan tidak perlu mengetik nominal.
+          <button class="modal-btn" style="padding:5px 10px;font-size:11px;margin-top:6px" onclick="checkQrisPayload()">Periksa Payload</button>
+        </div>
+      </div>
+
+      <div class="field-grid">
+        <div class="field">
+          <label>Kode Unik Transfer</label>
+          <div class="cloud-toggle">
+            <input type="checkbox" id="setUniqueCode">
+            <div>
+              <label for="setUniqueCode">Aktifkan kode unik</label>
+              <div class="sub">Menambah 1–999 pada nominal transfer agar mutasi bank mudah dicocokkan.</div>
+            </div>
+          </div>
+        </div>
+        <div class="field">
+          <label>Catatan Pembayaran</label>
+          <input id="setPayNote" placeholder="Kirim bukti transfer ke WhatsApp kami">
+          <div class="hint">Tampil di bawah daftar rekening.</div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Tempo Pembayaran Default</label>
+        <input id="setDueDays" type="text" inputmode="numeric" placeholder="0" style="max-width:140px">
+        <div class="hint">Jumlah hari sejak tanggal invoice. Isi <b>0</b> atau kosongkan bila tidak memakai jatuh tempo. Contoh: <b>7</b> berarti invoice hari ini jatuh tempo minggu depan. Tanggal tetap bisa diubah manual di tiap invoice.</div>
+      </div>
+
+      <div class="sec-head">
+        <svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        Konfirmasi Status Lunas <span class="line"></span>
+      </div>
+      <div class="field-grid">
+        <div class="field">
+          <label>Tanya Saat Menyimpan</label>
+          <div class="cloud-toggle">
+            <input type="checkbox" id="setCashConfirm">
+            <div>
+              <label for="setCashConfirm">Aktifkan konfirmasi</label>
+              <div class="sub">Saat klik Simpan, aplikasi bertanya apakah pembayaran sudah diterima — berlaku untuk Cash, Transfer, maupun QRIS.</div>
+            </div>
+          </div>
+        </div>
+        <div class="field">
+          <label>Batas Nilai Ditanya</label>
+          <input id="setCashThreshold" type="text" inputmode="numeric" placeholder="10.000" oninput="formatHargaInput(this)" style="max-width:160px">
+          <div class="hint">Invoice <b>di bawah</b> nilai ini tidak ditanya — dianggap boleh dibayar saat ambil barang. Isi <b>0</b> bila semua invoice ingin ditanya.</div>
+        </div>
+      </div>
+      </div>
+

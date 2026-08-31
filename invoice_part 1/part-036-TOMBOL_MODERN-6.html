@@ -1,0 +1,95 @@
+body.theme-dark .gc-cat{background:rgba(217,164,65,.85) !important;color:#1a1509 !important}
+body.theme-dark .pf-thumb:hover{border-color:rgba(217,164,65,.5) !important;background:rgba(217,164,65,.08) !important}
+body.theme-dark .gal-search:focus,body.theme-dark .cat-select:focus{border-color:#d9a441 !important;box-shadow:0 0 0 3px rgba(217,164,65,.14) !important}
+@media (max-width:620px){ .gal-grid{grid-template-columns:repeat(auto-fill,minmax(128px,1fr))} .pf-grid2{grid-template-columns:1fr} }
+/* Layar lebar: manfaatkan ruang dengan kartu sedikit lebih besar */
+@media (min-width:1200px){ #galleryModal.full .gal-grid{grid-template-columns:repeat(auto-fill,minmax(186px,1fr))} #galleryModal.full .gal-card{min-height:210px} #galleryModal.full .gc-img{height:132px;min-height:132px} }
+@media (max-width:620px){ #galleryModal.full .gal-grid{grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:9px} #galleryModal.full .gal-card{min-height:178px} #galleryModal.full .gc-img{height:100px;min-height:100px} }
+
+/* ===== BAR DATA CUSTOMER (khusus layar) =====
+   Menggantikan blok "Tagihan Kepada" di lembar invoice. Data
+   customer hanya untuk keperluan internal (riwayat & penagihan),
+   jadi tidak ikut tercetak maupun masuk PDF. */
+.cust-bar{
+  position:relative;z-index:1;width:100%;margin-top:2px;
+  display:flex;align-items:center;gap:14px;
+  padding:13px 16px;border-radius:10px;
+  border:1.5px dashed rgba(7,157,143,.35);
+  background:rgba(7,157,143,.04);
+  font:inherit;text-align:left;cursor:pointer;
+  transition:background .16s ease,border-color .16s ease;
+}
+.cust-bar:hover{background:rgba(7,157,143,.09);border-color:var(--teal)}
+.cust-bar.filled{border-style:solid;border-color:rgba(17,47,82,.1);background:rgba(255,255,255,.72)}
+.cb-icon{width:26px;height:26px;flex:none;color:var(--teal);display:flex;align-items:center;justify-content:center}
+.cb-icon svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.cb-copy{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.cb-label{font-size:11px;font-weight:800;letter-spacing:.2px;color:var(--teal)}
+.cb-value{font-size:14px;font-weight:750;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cust-bar.filled .cb-value{color:var(--navy);font-weight:800}
+.cb-edit{flex:none;color:var(--muted);display:flex}
+.cb-edit svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.cust-bar:hover .cb-edit{color:var(--teal)}
+body.theme-dark .cust-bar,body.theme-glass .cust-bar{background:rgba(255,255,255,.025);border-color:rgba(46,207,186,.3)}
+body.theme-dark .cust-bar:hover,body.theme-glass .cust-bar:hover{background:rgba(46,207,186,.1)}
+body.theme-dark .cust-bar.filled,body.theme-glass .cust-bar.filled{background:rgba(255,255,255,.035);border-color:rgba(255,255,255,.08)}
+body.theme-dark .cust-bar.filled .cb-value,body.theme-glass .cust-bar.filled .cb-value{color:#f2f8f7}
+body.theme-dark .cb-label,body.theme-glass .cb-label{color:#2ecfba}
+/* Tema dark memakai aksen emas */
+body.theme-dark .cust-bar{border-color:rgba(217,164,65,.3) !important;background:rgba(217,164,65,.05) !important}
+body.theme-dark .cust-bar:hover{background:rgba(217,164,65,.12) !important;border-color:rgba(217,164,65,.55) !important}
+body.theme-dark .cust-bar.filled{background:rgba(255,255,255,.028) !important;border-color:rgba(217,164,65,.13) !important}
+body.theme-dark .cb-icon,body.theme-dark .cb-label{color:#d9a441 !important}
+body.theme-dark .cust-bar.filled .cb-value{color:#f5ede0 !important}
+body.theme-dark .cust-bar:hover .cb-edit{color:#d9a441 !important}
+/* Tidak ikut tercetak maupun masuk PDF */
+@media print{ .cust-bar{display:none!important} }
+.pdf-export-host .cust-bar{display:none!important}
+
+/* ===== NOMOR WA PELANGGAN + PENGINGAT TAGIH ===== */
+/* Catatan: blok "Tagihan Kepada" sudah tidak ada di lembar invoice.
+   Data customer kini diisi lewat jendela terpisah (lihat .cust-bar
+   dan modal #customerModal). Gaya .billto-grid / .billto-phone
+   dihapus karena elemennya tidak ada lagi.
+   .billto-field TETAP dipakai — sebagai wadah dropdown saran nama
+   pelanggan di dalam modal. */
+
+/* Modal penagihan */
+.bill-preview{width:100%;min-height:190px;border:1px solid #dde5e6;border-radius:10px;padding:11px 13px;font:inherit;font-size:12px;line-height:1.6;color:var(--ink);background:#fbfdfd;outline:none;resize:vertical;white-space:pre-wrap}
+.bill-preview:focus{border-color:var(--teal);box-shadow:0 0 0 3px rgba(7,157,143,.12)}
+.bill-target{display:flex;align-items:center;gap:10px;padding:11px 13px;border-radius:10px;background:var(--teal-pale);border:1px solid rgba(7,157,143,.18);flex-wrap:wrap}
+.bill-target .bt-main{flex:1;min-width:0}
+.bill-target .bt-name{font-size:13px;font-weight:850;color:var(--navy)}
+.bill-target .bt-meta{font-size:11px;color:var(--teal-dark);margin-top:2px}
+.bill-target input{flex:none;width:170px;border:1px solid rgba(7,157,143,.3);border-radius:8px;padding:7px 9px;font:inherit;font-size:12px;color:var(--ink);background:#fff;outline:none}
+.bill-target input:focus{border-color:var(--teal)}
+.bill-tone{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;padding:4px;border-radius:9px;background:rgba(17,47,82,.08)}
+.bill-tone button{border:none;cursor:pointer;padding:8px 5px;border-radius:7px;background:transparent;color:var(--ink);font:inherit;font-size:11px;font-weight:800;transition:all .18s ease}
+.bill-tone button:hover{background:rgba(255,255,255,.6)}
+.bill-tone button.active{background:#fff;color:var(--teal);box-shadow:0 3px 8px rgba(17,47,82,.14)}
+body.theme-dark .bill-preview,body.theme-glass .bill-preview{background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.12);color:#e6efee}
+body.theme-dark .bill-target,body.theme-glass .bill-target{background:rgba(46,207,186,.12);border-color:rgba(46,207,186,.26)}
+body.theme-dark .bt-name,body.theme-glass .bt-name{color:#eef5f4}
+body.theme-dark .bt-meta,body.theme-glass .bt-meta{color:#3ee0c9}
+body.theme-dark .bill-target input,body.theme-glass .bill-target input{background:rgba(255,255,255,.06);border-color:rgba(46,207,186,.3);color:#e6efee}
+body.theme-dark .bill-tone,body.theme-glass .bill-tone{background:rgba(255,255,255,.08)}
+body.theme-dark .bill-tone button,body.theme-glass .bill-tone button{color:#c3d6d3}
+body.theme-dark .bill-tone button.active,body.theme-glass .bill-tone button.active{background:rgba(46,207,186,.22);color:#3ee0c9;box-shadow:inset 0 0 0 1px rgba(46,207,186,.5)}
+.history-action.bill{color:#8a6206;border-color:rgba(245,180,27,.45);background:rgba(245,180,27,.1)}
+.history-action.bill:hover{background:rgba(245,180,27,.2)}
+body.theme-dark .history-action.bill,body.theme-glass .history-action.bill{background:rgba(245,180,27,.16);border-color:rgba(245,180,27,.4);color:#f5c451}
+
+/* ===== JATUH TEMPO ===== */
+.meta-row.due input{font-size:12px}
+/* Baris tempo kosong tetap terlihat di layar (agar bisa diisi),
+   tapi tidak ikut tercetak maupun masuk PDF. */
+.pdf-export-host .meta-row.is-empty{display:none!important}
+@media print{ .meta-row.is-empty{display:none!important} }
+.due-flag{display:inline-flex;align-items:center;gap:5px;margin-top:5px;padding:4px 10px;border-radius:999px;font-size:10.5px;font-weight:850;letter-spacing:.2px}
+.due-flag svg{width:11px;height:11px;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;flex:none}
+.due-flag.late{background:rgba(239,61,67,.14);color:#c02a30}
+.due-flag.today{background:rgba(245,180,27,.2);color:#8a6206}
+.due-flag.soon{background:rgba(245,180,27,.14);color:#8a6206}
+.due-flag.ok{background:rgba(7,157,143,.13);color:#067d72}
+.due-flag.paid{background:rgba(7,157,143,.13);color:#067d72}
+body.theme-dark .due-flag.late,body.theme-glass .due-flag.late{background:rgba(239,61,67,.2);color:#ff9b9e}

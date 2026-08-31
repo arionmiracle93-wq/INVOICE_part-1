@@ -1,0 +1,109 @@
+/* CSS PART 01/10 */
+:root{
+  --teal:#079d8f; --teal-dark:#067d72; --teal-soft:#dff2ef; --teal-pale:#eef8f7;
+  --navy:#112f52; --navy-2:#0b2744; --yellow:#f5b41b; --ink:#15283d; --muted:#667689;
+  --line:#dfe7e8; --red:#ef3d43; --white:#fff; --paper:#fbfefe; --bg-gray:#f4f7f6;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;min-height:100%}
+body{
+  background:
+    radial-gradient(circle at 12% 10%, rgba(255,255,255,.86) 0 12%, transparent 26%),
+    radial-gradient(circle at 82% 8%, rgba(255,255,255,.76) 0 10%, transparent 24%),
+    linear-gradient(135deg, #0e9d93 0%, #36bcae 30%, #eef7f4 56%, #f8fbfa 100%);
+  color:var(--ink);
+  font-family:"Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+}
+body::before, body::after{content:"";position:fixed;inset:auto;pointer-events:none;z-index:0}
+body::before{width:540px;height:540px;left:-150px;top:-160px;background:radial-gradient(circle, rgba(8,157,143,.58), transparent 66%);filter:blur(4px);animation:softGlow 8s ease-in-out infinite alternate}
+body::after{width:520px;height:520px;right:-170px;bottom:-210px;background:radial-gradient(circle, rgba(245,180,27,.22), transparent 66%);filter:blur(8px);animation:softGlow 9s ease-in-out infinite alternate-reverse}
+@keyframes softGlow{from{transform:translate3d(0,0,0) scale(1);opacity:.8}to{transform:translate3d(18px,12px,0) scale(1.05);opacity:1}}
+@keyframes sidebarIn{from{opacity:0;transform:translateX(-24px)}to{opacity:1;transform:translateX(0)}}
+@keyframes paperIn{from{opacity:0;transform:translateY(18px) scale(.985)}to{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes rowIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+.app-shell{position:relative;z-index:1;display:grid;grid-template-columns:260px minmax(0,1fr);gap:28px;min-height:100vh;padding:20px 24px 22px}
+.sidebar{
+  position:sticky;top:20px;align-self:start;min-height:calc(100vh - 42px);padding:18px 16px;
+  border:1px solid rgba(255,255,255,.72);border-radius:18px;
+  background:linear-gradient(155deg, rgba(255,255,255,.58), rgba(255,255,255,.26));
+  box-shadow:0 30px 70px rgba(17,47,82,.16), inset 0 1px 0 rgba(255,255,255,.85);
+  backdrop-filter:blur(22px);display:flex;flex-direction:column;animation:sidebarIn .55s ease both;overflow:hidden;
+}
+.sidebar::before{content:"";position:absolute;inset:-1px auto auto 0;width:100%;height:150px;background:linear-gradient(135deg, rgba(7,157,143,.3), rgba(255,255,255,0));clip-path:polygon(0 0, 100% 0, 0 100%);pointer-events:none}
+.sidebar-brand{position:relative;padding:22px 18px 14px;margin-bottom:6px;min-height:0;display:flex;align-items:center}
+.sidebar-brand-inner{display:flex;align-items:center;gap:14px}
+/* Logo dibungkus <span> berisi SVG tertanam (bukan <img> eksternal)
+   agar tetap tampil offline dan aman saat dirender ke PDF. */
+.brand-mark,.logo-mark{display:block;overflow:visible;object-fit:contain}
+.brand-mark{width:66px;height:66px;flex:none}
+.logo-mark{width:64px;height:64px;flex:none;display:flex;align-items:center;justify-content:center;overflow:hidden}
+/* Isi logo WAJIB dibatasi ke ukuran wadahnya. Tanpa aturan ini,
+   logo hasil unggahan tampil sebesar ukuran aslinya. */
+.logo-mark svg,.logo-mark img{
+  width:100%;height:100%;
+  max-width:100%;max-height:100%;
+  display:block;object-fit:contain;
+}
+.sidebar-title{font-size:20px;line-height:1.12;letter-spacing:-.4px;color:var(--navy);font-weight:800}
+/* Sama seperti header invoice: kata kedua dibuat lebih ringan */
+.sidebar-title span{display:block;color:var(--teal);margin-top:1px;font-weight:400;letter-spacing:.4px}
+/* Caption di bawah nama — kecil & tenang agar tidak bersaing */
+.sidebar-caption{font-size:9.5px;font-weight:600;letter-spacing:.5px;color:var(--muted);margin-top:5px;line-height:1.3;text-transform:uppercase}
+body.theme-dark .sidebar-caption{color:#8d8271}
+body.theme-glass .sidebar-caption{color:#8fa9a6}
+.actions{position:relative;display:flex;flex-direction:column;gap:4px;padding-top:0}
+.actions::before,.sidebar-footer::before{content:"";display:block;height:1px;background:rgba(255,255,255,.56);box-shadow:0 1px 0 rgba(17,47,82,.05);margin:0 10px 8px}
+.actions::before{margin:0 10px 6px}
+/* Tombol menu sidebar.
+   Border transparan disiapkan sejak awal supaya tidak ada
+   pergeseran 1px saat hover. */
+.btn{
+  border:1px solid transparent;width:100%;min-height:46px;padding:6px 10px;
+  font:inherit;font-size:14px;font-weight:700;cursor:pointer;
+  display:flex;align-items:center;gap:12px;border-radius:14px;
+  color:var(--navy);background:transparent;text-align:left;position:relative;
+  transition:background .2s ease, border-color .2s ease, box-shadow .2s ease, color .2s ease, transform .18s ease;
+}
+.btn:hover,.btn:focus-visible{
+  background:linear-gradient(100deg, rgba(7,157,143,.13), rgba(7,157,143,.05));
+  border-color:rgba(7,157,143,.42);
+  box-shadow:0 0 0 3px rgba(7,157,143,.07), 0 8px 20px rgba(7,157,143,.12);
+  color:var(--teal-dark);outline:none;
+}
+.btn:active{transform:scale(.985)}
+.btn:hover .btn-icon,.btn:focus-visible .btn-icon{
+  color:var(--teal);background:rgba(255,255,255,.9);
+  box-shadow:inset 0 0 0 1.5px rgba(7,157,143,.5), 0 4px 12px rgba(7,157,143,.14);
+}
+/* Invoice Baru tetap memakai aksen merah */
+.btn-outline-red:hover,.btn-outline-red:focus-visible{
+  background:linear-gradient(100deg, rgba(239,61,67,.12), rgba(239,61,67,.04));
+  border-color:rgba(239,61,67,.42);
+  box-shadow:0 0 0 3px rgba(239,61,67,.06), 0 8px 20px rgba(239,61,67,.1);
+  color:var(--red);
+}
+.btn-outline-red:hover .btn-icon,.btn-outline-red:focus-visible .btn-icon{
+  color:var(--red);box-shadow:inset 0 0 0 1.5px rgba(239,61,67,.45), 0 4px 12px rgba(239,61,67,.12);
+}
+.btn-primary{background:linear-gradient(135deg, rgba(7,157,143,.5), rgba(16,170,157,.5));color:#fff;border:1px solid rgba(255,255,255,.5);box-shadow:0 14px 26px rgba(7,157,143,.16), inset 0 1px 0 rgba(255,255,255,.28);backdrop-filter:blur(6px)}
+.btn-primary:hover{background:linear-gradient(135deg, rgba(6,125,114,.62), rgba(7,157,143,.62));color:#fff}
+.btn-secondary{background:transparent;color:var(--navy)}
+.btn-outline-red{background:transparent;color:var(--red)}
+.btn-icon{width:34px;height:34px;flex:none;display:block;padding:8px;border-radius:11px;color:currentColor;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;background:rgba(255,255,255,.72);box-shadow:0 6px 14px rgba(17,47,82,.07), inset 0 0 0 1px rgba(255,255,255,.7);transition:background .2s ease, box-shadow .2s ease, color .2s ease}
+/* Pemisah tipis sebelum Pengaturan (menu terakhir) */
+.btn-settings{margin-top:6px;position:relative}
+.btn-settings::before{content:"";position:absolute;left:10px;right:10px;top:-4px;height:1px;background:rgba(255,255,255,.5)}
+.btn-primary .btn-icon{background:rgba(255,255,255,.22);box-shadow:inset 0 0 0 1px rgba(255,255,255,.32)}
+.icon-yellow{color:var(--yellow)}.icon-red{color:var(--red)}.icon-dark{color:var(--navy)}
+.btn-icon.icon-fill{fill:currentColor;stroke:none}
+.sidebar-footer{margin-top:0;padding:18px 18px 8px;position:relative}
+/* Catatan: blok "mini brand" di kaki sidebar sudah dihapus.
+   Gaya .sidebar-mini-brand / .mini-title / .mini-copy ikut
+   dibuang karena tidak lagi dipakai. */
+
+.workspace{min-width:0;display:flex;align-items:flex-start;justify-content:center;padding:6px 0 0}
+.invoice-frame{width:100%;max-width:1120px;padding:16px;border-radius:20px;background:rgba(255,255,255,.58);border:1px solid rgba(255,255,255,.78);box-shadow:0 32px 80px rgba(17,47,82,.12);backdrop-filter:blur(18px);animation:paperIn .6s .08s ease both}
+.card{width:100%;min-height:720px;background:linear-gradient(180deg, #ffffff 0%, var(--paper) 100%);padding:14px 34px 26px;border-radius:14px;box-shadow:inset 0 0 0 1px rgba(17,47,82,.05), 0 18px 46px rgba(17,47,82,.08);position:relative;overflow:hidden}

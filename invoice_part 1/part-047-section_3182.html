@@ -1,0 +1,45 @@
+      <!-- ══ TAB: KATALOG ══ -->
+      <div class="tab-panel" data-panel="katalog">
+        <div class="field" style="margin:0">
+
+        <div class="cat-toolbar">
+          <button class="modal-btn primary" onclick="addCatalogItem()">+ Tambah Produk</button>
+          <button class="modal-btn" onclick="document.getElementById('importCSVFile').click()">Import CSV</button>
+          <input type="file" id="importCSVFile" accept=".csv" style="display:none" onchange="importCatalogCSV(event)">
+          <button class="modal-btn" onclick="exportCatalogCSV()">Export CSV</button>
+          <span class="spacer"></span>
+          <button class="cat-mode" id="catModeBtn" onclick="toggleCatalogMode()" title="Beralih ke mode teks">Mode Teks</button>
+        </div>
+
+        <div id="catVisual">
+          <input class="cat-search" id="catSearch" placeholder="Cari produk..." autocomplete="off" oninput="renderCatalogEditor()">
+          <div class="cat-head">
+            <div>Nama Produk</div>
+            <div>Keterangan</div>
+            <div class="h-price">Harga</div>
+            <div>Bertingkat</div>
+            <div></div>
+          </div>
+          <div class="cat-list" id="catList"></div>
+          <div class="cat-foot">
+            <span class="cat-count" id="catCount"></span>
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+              <button class="modal-btn" style="padding:6px 10px;font-size:11px" onclick="sortCatalogItems()">Urutkan A–Z</button>
+              <button class="modal-btn" style="padding:6px 10px;font-size:11px" onclick="downloadSampleCatalogCSV()">Unduh Contoh CSV</button>
+              <button class="modal-btn" style="padding:6px 10px;font-size:11px" onclick="loadSampleCatalog()">Isi Contoh</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="catText" style="display:none">
+          <textarea id="setCatalog" class="catalog-textarea" rows="6" placeholder="Nama | Keterangan | Harga | Harga Bertingkat"></textarea>
+          <div class="hint">Satu produk per baris: <b>Nama | Keterangan | Harga | Harga Bertingkat</b>. Perubahan di sini otomatis masuk ke tampilan tabel saat Anda beralih kembali.</div>
+        </div>
+
+        <div class="hint">
+          <b>Harga Bertingkat</b> — isi <code style="background:rgba(17,47,82,.07);padding:1px 4px;border-radius:3px">2=8000;11=7000</code> artinya beli ≥2 jadi Rp 8.000/pcs, ≥11 jadi Rp 7.000/pcs.
+          Tambahkan <code style="background:rgba(17,47,82,.07);padding:1px 4px;border-radius:3px">mode=progresif</code> untuk harga berjenjang, atau <code style="background:rgba(17,47,82,.07);padding:1px 4px;border-radius:3px">basis=m2</code> bila tingkatan dihitung dari luas.
+        </div>
+        </div>
+      </div>
+

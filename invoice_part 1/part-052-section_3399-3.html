@@ -1,0 +1,180 @@
+          <div class="rep-period" id="repPeriod">—</div>
+          <button onclick="shiftReportMonth(1)" title="Bulan berikutnya"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></button>
+        </div>
+        <span class="spacer"></span>
+        <button class="modal-btn" style="padding:7px 12px;font-size:11.5px" onclick="setReportMonth(currentMonthKey())">Bulan Ini</button>
+      </div>
+
+      <div class="rep-kpi">
+        <div class="kpi omzet">
+          <div class="kpi-val" id="repOmzet">Rp 0</div>
+          <div class="kpi-lbl">Omzet</div>
+          <div class="kpi-delta flat" id="repOmzetDelta"></div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-val" id="repCount">0</div>
+          <div class="kpi-lbl">Invoice</div>
+          <div class="kpi-delta flat" id="repCountDelta"></div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-val" id="repAvg">Rp 0</div>
+          <div class="kpi-lbl">Rata-rata</div>
+        </div>
+        <div class="kpi piutang">
+          <div class="kpi-val" id="repPiutang">Rp 0</div>
+          <div class="kpi-lbl">Belum Dibayar</div>
+        </div>
+      </div>
+
+      <div class="rep-sec">
+        <div class="rep-sec-title">
+          <svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+          Penjualan Harian
+        </div>
+        <div class="rep-daily" id="repDaily"></div>
+        <div class="rep-daily-axis"><span>1</span><span id="repDailyMid">15</span><span id="repDailyEnd">31</span></div>
+        <div class="rep-note" id="repDailyNote"></div>
+      </div>
+
+      <div class="backup-divider"></div>
+
+      <div class="rep-sec">
+        <div class="rep-sec-title">
+          <svg viewBox="0 0 24 24"><path d="M20.59 13.41 13.42 20.6a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+          Produk Terlaris
+        </div>
+        <div id="repProducts"></div>
+      </div>
+
+      <div class="backup-divider"></div>
+
+      <div class="rep-sec">
+        <div class="rep-sec-title">
+          <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          Pelanggan Teratas
+        </div>
+        <div id="repCustomers"></div>
+      </div>
+
+    </div>
+    <div class="modal-foot">
+      <button class="modal-btn" onclick="exportReportCSV()">Export Laporan CSV</button>
+      <div class="modal-foot-right">
+        <button class="modal-btn" onclick="closeReport()">Tutup</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL PENCATATAN PEMBAYARAN -->
+<div class="modal-backdrop" id="payLedgerModal">
+  <div class="modal" style="max-width:560px">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title">Riwayat Pembayaran</div>
+        <div class="modal-sub" id="plInvoiceInfo">—</div>
+      </div>
+      <button class="modal-close" onclick="closePaymentLedger()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <div class="pl-summary">
+        <div class="pl-cell"><div class="pl-num" id="plTotal">Rp 0</div><div class="pl-lbl">Total Tagihan</div></div>
+        <div class="pl-cell paid"><div class="pl-num" id="plPaid">Rp 0</div><div class="pl-lbl">Sudah Dibayar</div></div>
+        <div class="pl-cell rest" id="plRestCell"><div class="pl-num" id="plRest">Rp 0</div><div class="pl-lbl">Sisa</div></div>
+      </div>
+
+      <div class="field">
+        <label>Daftar Pembayaran</label>
+        <div class="pl-list" id="plList"></div>
+      </div>
+
+      <div class="backup-divider"></div>
+
+      <div class="field">
+        <label>Catat Pembayaran Baru</label>
+        <div class="pl-form">
+          <div class="field">
+            <label>Tanggal</label>
+            <input type="date" id="plDate">
+          </div>
+          <div class="field">
+            <label>Jumlah</label>
+            <input type="text" id="plAmount" inputmode="numeric" placeholder="0" oninput="formatHargaInput(this)">
+          </div>
+          <div class="field">
+            <label>Metode</label>
+            <select id="plMethod">
+              <option value="Transfer">Transfer</option>
+              <option value="Cash">Cash</option>
+              <option value="QRIS">QRIS</option>
+            </select>
+          </div>
+        </div>
+        <div class="pl-quick">
+          <button onclick="fillPaymentAmount('rest')">Isi sisa penuh</button>
+          <button onclick="fillPaymentAmount('half')">Setengah sisa</button>
+        </div>
+        <div style="margin-top:8px" class="field">
+          <label>Keterangan <span style="font-weight:600;color:var(--muted)">(opsional)</span></label>
+          <input type="text" id="plNote" placeholder="Contoh: cicilan ke-2, via BCA">
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="modal-btn" onclick="closePaymentLedger()">Tutup</button>
+      <div class="modal-foot-right">
+        <button class="modal-btn primary" onclick="addPaymentRecord()">+ Tambah Pembayaran</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL DATA CUSTOMER
+     Input custName & custPhone DIPINDAH ke sini (id tetap sama)
+     agar seluruh fitur yang bergantung padanya — riwayat,
+     penagihan, laporan, CSV, WhatsApp — tetap berfungsi. -->
+<div class="modal-backdrop" id="customerModal">
+  <div class="modal" style="max-width:430px">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title">Data Customer</div>
+        <div class="modal-sub">Untuk riwayat &amp; penagihan — tidak dicetak di invoice</div>
+      </div>
+      <button class="modal-close" onclick="closeCustomerDialog()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <div class="field">
+        <label>Nama Customer</label>
+        <div class="billto-field">
+          <input id="custName" placeholder="Nama customer" value="" autocomplete="off">
+          <div class="cust-suggestions" id="custSuggestions" role="listbox"></div>
+        </div>
+        <div class="hint">Ketik untuk melihat saran dari pelanggan yang pernah tercatat.</div>
+      </div>
+      <div class="field" id="custPhoneWrap">
+        <label>No. WhatsApp <span style="font-weight:600;color:var(--muted)">(opsional)</span></label>
+        <input id="custPhone" placeholder="08xx xxxx xxxx" value="" autocomplete="off" inputmode="tel" oninput="onCustPhoneInput()">
+        <div class="hint">Dipakai untuk mengirim invoice &amp; pengingat tagihan. Terisi sendiri bila pelanggan pernah dicatat sebelumnya.</div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="modal-btn ghost-red" onclick="clearCustomerData()">Kosongkan</button>
+      <div class="modal-foot-right">
+        <button class="modal-btn primary" onclick="closeCustomerDialog()">Selesai</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL PENAGIHAN -->
+<div class="modal-backdrop" id="billModal">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title">Kirim Pengingat Tagihan</div>
+        <div class="modal-sub">Periksa pesan sebelum dikirim</div>
+      </div>
+      <button class="modal-close" onclick="closeBillReminder()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <div class="bill-target">

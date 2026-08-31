@@ -1,0 +1,47 @@
+/* CSS PART 04/10 - GLASS THEME */
+/* Latar glass: hijau zamrud gelap yang tenang.
+   Versi lama memakai banyak warna (jingga, ungu, merah muda) yang
+   terlalu ramai dan mengganggu keterbacaan invoice. Sekarang satu
+   keluarga warna saja agar isi dokumen tetap jadi fokus utama. */
+body.theme-glass{
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='.05'/%3E%3C/svg%3E"),
+    radial-gradient(ellipse 58% 46% at 12% 26%, rgba(18,132,120,.30) 0%, transparent 62%),
+    radial-gradient(ellipse 52% 42% at 88% 74%, rgba(14,104,98,.26) 0%, transparent 64%),
+    radial-gradient(ellipse 74% 38% at 50% 104%, rgba(22,150,132,.20) 0%, transparent 66%),
+    radial-gradient(ellipse 40% 30% at 78% 6%, rgba(30,168,148,.14) 0%, transparent 70%),
+    linear-gradient(158deg, #0b201e 0%, #081716 42%, #050f0e 74%, #040c0b 100%);
+  background-attachment:fixed;color:#eaf3f7;
+}
+body.theme-glass::before{width:620px;height:620px;left:-200px;top:-220px;background:radial-gradient(circle, rgba(30,170,150,.20), rgba(20,120,108,.06) 46%, transparent 70%);filter:blur(40px)}
+body.theme-glass::after{width:700px;height:700px;right:-240px;bottom:-290px;background:radial-gradient(circle, rgba(22,140,126,.18), rgba(16,100,92,.05) 48%, transparent 72%);filter:blur(44px)}
+body.theme-glass .sidebar{background:linear-gradient(160deg, rgba(14,42,40,.62), rgba(7,24,23,.55));border-color:rgba(255,255,255,.08);border-radius:22px;box-shadow:0 30px 70px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.07);backdrop-filter:blur(26px) saturate(130%)}
+body.theme-glass .sidebar::before{display:none}
+body.theme-glass .head{padding-top:8px;border-bottom:none}
+body.theme-glass .sidebar-title{color:#f2fbfa}
+body.theme-glass .sidebar-title span{color:#2ecfba}
+body.theme-glass .actions::before,body.theme-glass .sidebar-footer::before{background:rgba(255,255,255,.08);box-shadow:none}
+body.theme-glass .btn{color:#dfeceb}
+body.theme-glass .btn:hover,body.theme-glass .btn:focus-visible{
+  background:linear-gradient(100deg, rgba(46,207,186,.15), rgba(46,207,186,.04));
+  border-color:rgba(62,224,201,.6);
+  box-shadow:0 0 0 3px rgba(46,207,186,.07), 0 8px 26px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.06);
+  color:#8ff0e0;
+}
+body.theme-glass .btn:hover .btn-icon,body.theme-glass .btn:focus-visible .btn-icon{
+  background:rgba(46,207,186,.13);
+  box-shadow:inset 0 0 0 1.5px rgba(62,224,201,.65), 0 0 16px rgba(46,207,186,.18);
+  color:#3ee0c9 !important;
+}
+body.theme-glass .btn-outline-red:hover,body.theme-glass .btn-outline-red:focus-visible{
+  background:linear-gradient(100deg, rgba(239,61,67,.16), rgba(239,61,67,.05));
+  border-color:rgba(239,61,67,.5);color:#ff9b9e;
+}
+body.theme-glass .btn-outline-red:hover .btn-icon,body.theme-glass .btn-outline-red:focus-visible .btn-icon{
+  background:rgba(239,61,67,.12);
+  box-shadow:inset 0 0 0 1.5px rgba(239,61,67,.5);color:#ff9b9e !important;
+}
+body.theme-glass .btn-settings::before{background:rgba(255,255,255,.09)}
+body.theme-glass .btn-primary{background:linear-gradient(150deg, rgba(13,62,58,.85), rgba(8,38,38,.7));border:1px solid rgba(46,207,186,.55);color:#8fe8d8;box-shadow:0 0 22px rgba(46,207,186,.14), inset 0 1px 0 rgba(255,255,255,.06);backdrop-filter:blur(10px)}
+body.theme-glass .btn-primary:hover{background:linear-gradient(150deg, rgba(16,78,72,.9), rgba(10,48,46,.78));color:#b7f5e8}
+

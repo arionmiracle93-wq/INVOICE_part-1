@@ -1,0 +1,137 @@
+.hist-badge.partial{background:rgba(7,157,143,.16);color:#067d72}
+body.theme-dark .hist-badge.partial,body.theme-glass .hist-badge.partial{background:rgba(46,207,186,.2);color:#3ee0c9}
+@media (max-width:620px){ .pl-form{grid-template-columns:1fr} .pl-summary{grid-template-columns:1fr} }
+
+/* ══════════════════════════════════════════════════════════════
+   TATA LETAK v2 — mengikuti rancangan referensi
+   Ditempatkan setelah gaya dasar agar menimpanya tanpa perlu
+   mengubah aturan lama satu per satu.
+   ══════════════════════════════════════════════════════════════ */
+
+/* — Kotak meta pada header — */
+.head-right{min-width:330px}
+.inv-title{font-size:34px;letter-spacing:3px;margin-bottom:14px}
+.meta-box{
+  width:100%;border:1px solid rgba(17,47,82,.1);border-radius:10px;
+  overflow:hidden;background:rgba(255,255,255,.6);
+}
+.meta-box .meta-row{
+  display:flex;align-items:center;justify-content:space-between;gap:14px;
+  margin:0;padding:9px 14px;border-bottom:1px solid rgba(17,47,82,.07);
+}
+.meta-box .meta-row:last-child{border-bottom:none}
+.meta-box .meta-row label{font-size:12px;font-weight:650;color:var(--muted);flex:none}
+.meta-box .meta-row input{
+  width:172px;min-height:30px;flex:none;border-radius:7px;padding:5px 12px;
+  font-size:12.5px;font-weight:750;text-align:center;
+  background:rgba(17,47,82,.05);box-shadow:none;color:var(--navy);
+}
+body.theme-dark .meta-box{background:rgba(255,255,255,.02) !important;border-color:rgba(217,164,65,.16) !important}
+body.theme-dark .meta-box .meta-row{border-bottom-color:rgba(217,164,65,.1) !important}
+body.theme-dark .meta-box .meta-row label{color:#9a8f7d !important}
+body.theme-dark .meta-box .meta-row input{background:rgba(217,164,65,.1) !important;color:#f0e6d6 !important;box-shadow:none !important}
+body.theme-glass .meta-box{background:rgba(255,255,255,.03);border-color:rgba(255,255,255,.08)}
+body.theme-glass .meta-box .meta-row{border-bottom-color:rgba(255,255,255,.07)}
+body.theme-glass .meta-box .meta-row label{color:#9db9b6}
+body.theme-glass .meta-box .meta-row input{background:rgba(255,255,255,.06);color:#eef7f6}
+
+/* — Tabel: kaki menyatu dengan badan tabel — */
+.table-wrap{
+  border:1px solid rgba(17,47,82,.09);border-radius:12px;overflow:hidden;
+  box-shadow:none;background:rgba(255,255,255,.5);margin-top:18px;
+}
+.table-wrap table{border:none;border-radius:0;background:transparent}
+.table-wrap thead th:first-child,.table-wrap thead th:last-child{border-radius:0}
+.table-empty{
+  display:none;flex-direction:column;align-items:center;justify-content:center;
+  gap:4px;padding:52px 20px;text-align:center;color:var(--muted);
+}
+.table-empty.show{display:flex}
+.table-empty svg{width:40px;height:40px;margin-bottom:8px;opacity:.5;fill:none;stroke:currentColor;stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round}
+.te-title{font-size:14px;font-weight:800;color:var(--ink)}
+.te-sub{font-size:12px;color:var(--muted)}
+.table-foot{
+  display:flex;align-items:center;gap:14px;padding:12px 14px;
+  border-top:1px solid rgba(17,47,82,.08);background:rgba(17,47,82,.02);
+}
+.tf-btns{display:flex;gap:8px;flex-wrap:wrap;flex:none}
+
+/* — Tombol kalkulator m² di judul kolom —
+   Diletakkan menempel pada judul "M² BAHAN" agar langsung
+   terhubung dengan kolom yang bersangkutan. */
+.th-m2{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.th-calc-btn{
+  flex:none;width:19px;height:19px;padding:0;border:none;border-radius:5px;
+  background:rgba(255,255,255,.22);color:#fff;cursor:pointer;
+  display:inline-flex;align-items:center;justify-content:center;
+  transition:background .16s ease,transform .16s ease;
+}
+.th-calc-btn svg{width:12px;height:12px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;display:block}
+.th-calc-btn:hover{background:rgba(255,255,255,.42);transform:translateY(-1px)}
+.th-calc-btn:active{transform:translateY(0) scale(.94)}
+.th-calc-btn:focus-visible{outline:2px solid rgba(255,255,255,.7);outline-offset:1px}
+body.theme-dark .th-calc-btn{background:rgba(255,255,255,.16);color:#fbf0d8}
+body.theme-dark .th-calc-btn:hover{background:rgba(255,255,255,.3)}
+/* Tidak ikut tercetak maupun masuk PDF */
+@media print{ .th-calc-btn{display:none!important} }
+.pdf-export-host .th-calc-btn{display:none!important}
+.tf-count{flex:1;text-align:center;font-size:12px;color:var(--muted);font-weight:650}
+.tf-total{flex:none;font-size:15px;font-weight:850;color:var(--navy);font-variant-numeric:tabular-nums;padding-right:4px}
+/* Tombol utama tabel dibuat solid supaya menonjol */
+.table-foot .add-row-btn{
+  border-style:solid;border-color:transparent;
+  background:linear-gradient(135deg,var(--teal),#10aa9d);color:#fff;
+  box-shadow:0 6px 16px rgba(7,157,143,.22);
+}
+.table-foot .add-row-btn:hover{background:linear-gradient(135deg,#06897d,#0fa093);color:#fff}
+/* Catatan: tombol "Kalkulator m²" sudah dipindah ke judul kolom
+   M² BAHAN (lihat .th-calc-btn). Gaya .m2-calc-btn lama masih
+   disisakan agar tidak ada aturan yang menggantung, tetapi
+   elemennya tidak dipakai lagi di kaki tabel. */
+body.theme-dark .table-wrap{background:rgba(255,255,255,.015) !important;border-color:rgba(217,164,65,.14) !important}
+body.theme-dark .table-foot{background:rgba(217,164,65,.04) !important;border-top-color:rgba(217,164,65,.12) !important}
+body.theme-dark .tf-total{color:#f0e6d6 !important}
+body.theme-dark .tf-count,body.theme-dark .te-sub{color:#9a8f7d !important}
+body.theme-dark .te-title{color:#ddd2bf !important}
+body.theme-dark .table-empty{color:#8d8271 !important}
+body.theme-dark .table-foot .add-row-btn{
+  background:linear-gradient(135deg,#a87c26,#d9a441) !important;color:#1a1509 !important;
+  border-color:transparent !important;box-shadow:0 6px 16px rgba(217,164,65,.2) !important;
+}
+body.theme-dark .table-foot .add-row-btn:hover{background:linear-gradient(135deg,#bd8c2c,#e8c56a) !important}
+
+body.theme-glass .table-wrap{background:rgba(255,255,255,.015);border-color:rgba(255,255,255,.08)}
+body.theme-glass .table-foot{background:rgba(255,255,255,.03);border-top-color:rgba(255,255,255,.07)}
+body.theme-glass .tf-total{color:#f2fbfa}
+body.theme-glass .tf-count,body.theme-glass .te-sub{color:#9db9b6}
+body.theme-glass .te-title{color:#e9f2f0}
+
+/* — Dua kolom: metode pembayaran | ringkasan biaya — */
+.foot-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:16px;align-items:start}
+.foot-grid .pay-panel{flex-direction:column}
+.foot-grid .pay-qris{width:100%}
+.totals-col{display:flex;flex-direction:column;gap:12px}
+.totals-col .totals-box{
+  background:rgba(255,255,255,.5);border:1px solid rgba(17,47,82,.09);
+  border-radius:12px;box-shadow:none;padding:6px 4px;
+}
+.totals-col .t-row{
+  padding:9px 16px;border-bottom:none;font-size:13.5px;
+  color:var(--ink);font-weight:650;
+}
+.totals-col .t-label{
+  font-size:13.5px;text-transform:none;letter-spacing:0;
+  font-weight:650;color:var(--ink);
+}
+.totals-col .t-label i{font-style:italic;font-weight:500;opacity:.7;font-size:12.5px}
+.totals-col .t-row.grand{
+  background:transparent;border-top:1px solid rgba(17,47,82,.1);
+  margin-top:4px;padding-top:14px;padding-bottom:12px;
+}
+.totals-col .t-row.grand .t-label{font-size:15px;font-weight:850;color:var(--teal-dark);text-transform:uppercase;letter-spacing:.3px}
+.totals-col .t-row.grand #totalOut{font-size:19px;font-weight:850;color:var(--navy)}
+.totals-col .t-row.dp{border-top:1px solid rgba(17,47,82,.07);padding-top:11px}
+.totals-col .adjustment-value input{
+  width:78px;text-align:right;border:1px solid rgba(17,47,82,.12);
+  border-radius:7px;padding:5px 9px;background:rgba(255,255,255,.7);
+}

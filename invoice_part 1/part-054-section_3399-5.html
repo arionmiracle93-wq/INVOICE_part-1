@@ -1,0 +1,58 @@
+        <div class="cloud-config" id="cloudConfig">
+          <div class="field">
+            <label>Supabase Project URL</label>
+            <input id="cfgSupaUrl" placeholder="https://xxxxxxxx.supabase.co" autocomplete="off" spellcheck="false">
+            <div class="hint">Isi <b>hanya alamat dasarnya</b> — tanpa <code style="background:rgba(17,47,82,.07);padding:1px 4px;border-radius:3px">/rest/v1</code> atau path lain. Temukan di <b>Project Settings → API → Project URL</b>.</div>
+          </div>
+          <div class="field">
+            <label>Anon / Public Key</label>
+            <input id="cfgSupaKey" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." autocomplete="off" spellcheck="false">
+            <div class="hint">
+              <b>Bukan alamat web.</b> Diawali <code style="background:rgba(17,47,82,.07);padding:1px 4px;border-radius:3px">sb_publishable_</code> (format baru) atau <code style="background:rgba(17,47,82,.07);padding:1px 4px;border-radius:3px">eyJ</code> (format lama).
+              Ambil dari <b>Project Settings → API Keys</b>.
+              Jangan memakai <i>service_role</i> / <i>sb_secret_</i>.
+            </div>
+          </div>
+          <div class="cloud-row">
+            <div class="field">
+              <label>Nama Bucket <span style="font-weight:600;color:var(--muted)">(untuk backup)</span></label>
+              <input id="cfgSupaBucket" placeholder="invoice-backup" autocomplete="off" spellcheck="false">
+              <div class="hint">Khusus berkas backup — isi <b>invoice-backup</b>. Bucket <i>produk-gambar</i> belum dipakai; itu untuk gambar produk di tahap berikutnya.</div>
+            </div>
+            <div class="field"><label>Interval (menit)</label><input id="cfgCloudInterval" type="text" inputmode="numeric" placeholder="10"></div>
+          </div>
+          <div class="cloud-row">
+            <div class="field"><label>Nama Perangkat</label><input id="cfgDeviceName" placeholder="Komputer Kasir" autocomplete="off"></div>
+            <div class="field"><label>Kode Perangkat (nomor invoice)</label><input id="cfgDeviceCode" placeholder="A" maxlength="3" autocomplete="off"></div>
+          </div>
+          <div class="cloud-help">
+            <b>Kode perangkat</b> disisipkan ke nomor invoice (mis. <code>INV-20260829-A005</code>) agar dua perangkat tidak membuat nomor kembar. Kosongkan bila hanya memakai satu perangkat.
+            <details>
+              <summary>Cara menyiapkan Supabase (klik)</summary>
+              <pre>1. Buat project di supabase.com (gratis)
+2. Storage &gt; New bucket &gt; nama: invoice-backup
+   Public bucket: NONAKTIF
+3. Settings &gt; API &gt; salin "Project URL" dan "anon public"
+4. SQL Editor, jalankan policy berikut:
+
+create policy "backup rw"
+on storage.objects for all
+to anon
+using   ( bucket_id = 'invoice-backup' )
+with check ( bucket_id = 'invoice-backup' );</pre>
+              Anon key memang aman dipublikasikan selama akses dibatasi lewat policy di atas. Untuk keamanan lebih ketat, gunakan bucket khusus yang hanya menyimpan backup.
+            </details>
+          </div>
+          <div class="backup-actions">
+            <button class="modal-btn" onclick="testCloudConnection()">Tes Koneksi</button>
+            <button class="modal-btn primary" onclick="saveCloudConfig()">Simpan Koneksi</button>
+          </div>
+        </div>
+
+        <div id="cloudSnapWrap" style="display:none">
+          <div class="tier-seg-label">Snapshot Tersimpan di Cloud</div>
+          <div class="snap-list" id="cloudSnapList"></div>
+        </div>
+
+        <div class="backup-divider"></div>
+

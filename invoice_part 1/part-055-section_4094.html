@@ -1,0 +1,147 @@
+        <!-- ══ SINKRONISASI KATALOG ANTAR PC ══ -->
+        <div class="cloud-head">
+          <div class="backup-section-title" style="margin:0">
+            <svg viewBox="0 0 24 24"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
+            Sinkronisasi Katalog Antar PC
+          </div>
+          <span class="cloud-badge off" id="syncBadge"><span class="dot"></span><span id="syncBadgeText">Nonaktif</span></span>
+        </div>
+
+        <div class="cloud-help">
+          Katalog produk dibagikan ke seluruh PC yang memakai project Supabase yang sama.
+          Perubahan tersalin setiap <b>15 detik</b>. Bila dua PC mengubah produk yang sama,
+          <b>yang tersimpan paling akhir</b> yang dipakai.
+        </div>
+
+        <div class="backup-note warn" id="syncSqlWarn">
+          <b>Sebelum diaktifkan</b> — tabel <code>pp_products</code> harus dibuat dulu di Supabase.
+          Klik <b>Lihat Skrip SQL</b>, salin isinya, jalankan di <b>SQL Editor</b> Supabase.
+          <br><br>
+          <b>Catatan:</b> tombol <i>Tes Koneksi</i> di atas hanya memeriksa <i>bucket</i> untuk backup —
+          <b>bukan</b> tabel untuk sinkronisasi. Keduanya hal yang berbeda.
+        </div>
+
+        <div class="cloud-toggle">
+          <input type="checkbox" id="syncCatalogToggle" onchange="toggleCatalogSync()">
+          <div>
+            <label for="syncCatalogToggle">Aktifkan sinkronisasi katalog</label>
+            <div class="sub">Hanya katalog produk. Riwayat invoice &amp; pelanggan menyusul di tahap berikutnya.</div>
+          </div>
+        </div>
+
+        <div class="backup-actions">
+          <button class="modal-btn" onclick="showSyncSql()">Lihat Skrip SQL</button>
+          <button class="modal-btn" onclick="syncCatalogNow()">
+            <svg viewBox="0 0 24 24"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
+            Sinkronkan Sekarang
+          </button>
+        </div>
+
+        <div class="backup-meta" id="syncInfo">Belum pernah disinkronkan</div>
+        <div class="app-version">Versi berkas <b id="syncVersionText">—</b> · bila berbeda dengan berkas Anda, tekan <b>Ctrl+Shift+R</b></div>
+
+        <div class="backup-meta" id="cloudLastInfo">Belum ada backup cloud</div>
+      </div>
+
+      <div class="backup-divider"></div>
+
+      <!-- PULIHKAN -->
+      <div class="backup-section">
+        <div class="backup-section-title">
+          <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          Pulihkan dari Backup
+        </div>
+
+        <input type="file" id="backupFileInput" accept=".json,application/json" style="display:none" onchange="handleBackupFile(event)">
+        <div class="backup-drop" id="backupDrop" onclick="document.getElementById('backupFileInput').click()">
+          <svg class="bd-icon" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          <div class="bd-title">Pilih atau seret file backup ke sini</div>
+          <div class="bd-sub">Format .json hasil unduhan dari aplikasi ini</div>
+        </div>
+
+        <div class="restore-preview" id="restorePreview">
+          <div>
+            <div class="restore-file" id="restoreFileName">-</div>
+            <div class="restore-date" id="restoreFileDate">-</div>
+          </div>
+          <div class="backup-stats">
+            <div class="backup-stat"><div class="num" id="preHistory">0</div><div class="lbl">INVOICE</div></div>
+            <div class="backup-stat"><div class="num" id="preCustomers">0</div><div class="lbl">PELANGGAN</div></div>
+            <div class="backup-stat"><div class="num" id="preCatalog">0</div><div class="lbl">PRODUK</div></div>
+            <div class="backup-stat"><div class="num" id="preExtras">0</div><div class="lbl">TTD/STEMPEL</div></div>
+          </div>
+
+          <div>
+            <div class="tier-seg-label">Mode Pemulihan</div>
+            <div class="backup-mode" id="backupModeSeg">
+              <button class="active" data-mode="merge" onclick="setRestoreMode('merge')">Gabungkan</button>
+              <button data-mode="replace" onclick="setRestoreMode('replace')">Timpa Semua</button>
+            </div>
+            <div class="backup-mode-desc" id="restoreModeDesc">
+              <b>Gabungkan:</b> riwayat, pelanggan, dan katalog dari backup ditambahkan ke data yang ada. Pengaturan lokal dipertahankan bila sudah terisi. Draft yang sedang dikerjakan tidak diubah.
+            </div>
+          </div>
+
+          <div class="backup-actions">
+            <button class="modal-btn" onclick="cancelRestore()">Batal</button>
+            <button class="modal-btn primary" onclick="applyRestore()">Pulihkan Sekarang</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="backup-divider"></div>
+
+      <!-- RESET -->
+      <div class="backup-section">
+        <div class="backup-note warn">
+          <b>Zona berbahaya.</b> Menghapus seluruh data akan mengosongkan riwayat invoice, pelanggan, katalog, pengaturan, dan draft dari browser ini secara permanen. Pastikan Anda sudah mengunduh backup.
+        </div>
+        <div class="backup-actions">
+          <button class="modal-btn ghost-red" onclick="wipeAllData()">Hapus Semua Data (Reset)</button>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="modal-foot">
+      <div></div>
+      <button class="modal-btn" onclick="closeBackup()">Tutup</button>
+    </div>
+  </div>
+</div>
+
+<!-- m2 CALCULATOR POPOVER -->
+<div class="m2-calc-popover" id="m2CalcPopover">
+  <div class="m2-calc-title">Kalkulator m²</div>
+  <div class="m2-calc-units">
+    <button class="m2-calc-unit-btn active" data-unit="cm" onclick="setM2CalcUnit('cm')">cm</button>
+    <button class="m2-calc-unit-btn" data-unit="m" onclick="setM2CalcUnit('m')">m</button>
+  </div>
+  <div class="m2-calc-row"><label>Lebar</label><input id="m2CalcW" inputmode="decimal" placeholder="0"><span class="unit" id="m2CalcUnitW">cm</span></div>
+  <div class="m2-calc-row"><label>Panjang</label><input id="m2CalcH" inputmode="decimal" placeholder="0"><span class="unit" id="m2CalcUnitH">cm</span></div>
+  <div class="m2-calc-result"><span class="r-label">Hasil</span><span class="r-value" id="m2CalcResult">0,00 m²</span></div>
+  <div class="m2-calc-btns">
+    <button class="cancel" onclick="closeM2Calc()">Batal</button>
+    <button class="apply" onclick="applyM2Calc()">Terapkan</button>
+  </div>
+</div>
+
+<!-- TIER POPOVER -->
+<div class="tier-popover" id="tierPopover">
+  <div class="m2-calc-title">Harga Bertingkat</div>
+  <div class="tier-hint">Satu baris per tier: <b>minimal = harga</b>. Contoh: <b>2=8000</b>, <b>11=7000</b>. Kolom HARGA tetap menjadi harga dasar dan tidak akan tertimpa.</div>
+  <textarea id="tierEditorText" placeholder="2=8000&#10;11=7000&#10;51=6500"></textarea>
+  <div class="tier-seg-label">Mode perhitungan</div>
+  <div class="tier-seg" id="tierModeSeg">
+    <button class="active" data-mode="flat" onclick="setTierMode('flat')">Seragam</button>
+    <button data-mode="graduated" onclick="setTierMode('graduated')">Progresif</button>
+  </div>
+  <div class="tier-seg-label">Basis tingkatan</div>
+  <div class="tier-seg" id="tierBasisSeg">
+    <button class="active" data-basis="qty" onclick="setTierBasis('qty')">Qty (pcs)</button>
+    <button data-basis="m2" onclick="setTierBasis('m2')">Total m²</button>
+  </div>
+  <div class="tier-preview" id="tierPreview">Masukkan tier untuk melihat simulasi.</div>
+  <div class="m2-calc-btns">
+    <button class="cancel" onclick="clearTiers()">Hapus</button>
+    <button class="cancel" onclick="closeTierEditor()">Batal</button>
