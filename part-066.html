@@ -1,0 +1,195 @@
+    while(headRow.children.length > 6) headRow.removeChild(headRow.lastElementChild);
+  }
+  /* Buang baris yang benar-benar kosong agar tabel tidak melar */
+  clone.querySelectorAll('tbody tr').forEach(function(tr){
+    const txt = tr.textContent.replace(/Rp\s*0/g, '').replace(/\s/g, '');
+    const hasInput = Array.prototype.some.call(tr.querySelectorAll('input, textarea'), function(f){
+      return String(f.value || '').trim() !== '';
+    });
+    if(!hasInput && !txt) tr.remove();
+  });
+
+  /* Samakan posisi stempel LUNAS secara proporsional */
+  const srcStamp = document.getElementById('lunasStamp');
+  const dstStamp = clone.querySelector('.lunas-stamp');
+  if(dstStamp && srcStamp && srcStamp.classList.contains('active')){
+    if(srcStamp.dataset.leftPct && srcStamp.dataset.topPct){
+      dstStamp.style.left = srcStamp.dataset.leftPct + '%';
+      dstStamp.style.top = srcStamp.dataset.topPct + '%';
+      dstStamp.style.right = 'auto';
+    }
+  }
+
+  freezeFormControls(clone);
+  host.appendChild(clone);
+  document.body.appendChild(host);
+  return host;
+}
+
+async function captureInvoiceCanvas(){
+  /* Catat tema aktif SEBELUM try agar tetap terbaca di blok finally */
+  const isDark = document.body.classList.contains('theme-dark');
+  const isGlass = document.body.classList.contains('theme-glass');
+  let host = null;
+
+  try{
+    /* Paksa tema terang agar hasil PDF konsisten di semua perangkat */
+    if(isDark) document.body.classList.remove('theme-dark');
+    if(isGlass) document.body.classList.remove('theme-glass');
+
+    host = buildExportClone();
+
+    /* Tunggu layout & gambar (logo, TTD, stempel) siap */
+    await new Promise(function(r){ setTimeout(r, 60); });
+    const imgs = Array.from(host.querySelectorAll('img'));
+    await Promise.all(imgs.map(function(img){
+      if(img.complete) return Promise.resolve();
+      return new Promise(function(res){
+        img.addEventListener('load', res, {once:true});
+        img.addEventListener('error', res, {once:true});
+        setTimeout(res, 2500);
+      });
+    }));
+    await new Promise(function(r){ setTimeout(r, 80); });
+
+    const target = host.firstElementChild;
+    /* Ukur tinggi sebenarnya SETELAH gambar & font selesai dimuat.
+       Ambil nilai terbesar agar tidak ada bagian bawah yang terpangkas. */
+    const rectH = Math.ceil(target.getBoundingClientRect().height);
+    const fullH = Math.max(rectH, target.scrollHeight, target.offsetHeight) + 2;
+
+    return await html2canvas(target, {
+      scale: 2,
+      useCORS: true,
+      allowTaint: true,
+      backgroundColor: '#ffffff',
+      logging: false,
+      scrollX: 0,
+      scrollY: 0,
+      width: 794,
+      height: fullH,
+      windowWidth: 794,
+      windowHeight: fullH
+    });
+  } finally {
+    if(host && host.parentNode) host.parentNode.removeChild(host);
+    if(isDark) document.body.classList.add('theme-dark');
+    if(isGlass) document.body.classList.add('theme-glass');
+    ensureTableToolbarVisible();
+  }
+}
+
+/* Show/hide export overlay */
+function showExportOverlay(title, message){
+  document.getElementById('exportTitle').textContent = title || 'Membuat PDF...';
+  document.getElementById('exportMessage').textContent = message || 'Mohon tunggu, invoice sedang diproses.';
+  document.getElementById('exportOverlay').classList.add('active');
+}
+function hideExportOverlay(){
+  document.getElementById('exportOverlay').classList.remove('active');
+}
+
+/* Cari baris piksel "kosong" (nyaris seragam) untuk titik potong halaman.
+   Mencegah teks / baris tabel terbelah di antara dua halaman. */
+function findSafeCut(canvas, idealCut, minCut){
+  const ctx = canvas.getContext('2d', {willReadFrequently:true});
+  const w = canvas.width;
+  const top = Math.max(minCut, Math.floor(idealCut - (idealCut - minCut) * 0.32));
+  /* Telusuri ke atas dari titik ideal mencari baris tanpa konten */
+  for(let y = Math.floor(idealCut); y > top; y--){
+    let data;
+    try{ data = ctx.getImageData(0, y, w, 1).data; }catch(e){ return Math.floor(idealCut); }
+    let uniform = true;
+    const r0 = data[0], g0 = data[1], b0 = data[2];
+    /* Baris dianggap aman bila hampir seragam & terang (area putih) */
+    if(r0 < 235 || g0 < 235 || b0 < 235) continue;
+    for(let x = 4; x < data.length; x += 16){
+      if(Math.abs(data[x] - r0) > 12 || Math.abs(data[x+1] - g0) > 12 || Math.abs(data[x+2] - b0) > 12){
+        uniform = false; break;
+      }
+    }
+    if(uniform) return y;
+  }
+  return Math.floor(idealCut);
+}
+
+/* Generate PDF dari invoice menggunakan html2canvas + jsPDF */
+async function generateInvoicePDF(){
+  const canvas = await captureInvoiceCanvas();
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF({orientation:'portrait', unit:'mm', format:'a4'});
+
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  const pageHeight = pdf.internal.pageSize.getHeight();
+  const mX = 7;              /* margin kiri/kanan (mm) */
+  const mY = 8;              /* margin atas/bawah (mm) */
+  const imgWidth = pageWidth - mX * 2;
+  const usableH = pageHeight - mY * 2;
+
+  /* Skala px kanvas -> mm halaman */
+  const pxPerMm = canvas.width / imgWidth;
+  const fullHeightMm = canvas.height / pxPerMm;
+
+  /* Muat satu halaman */
+  if(fullHeightMm <= usableH + 0.5){
+    pdf.addImage(canvas.toDataURL('image/png'), 'PNG', mX, mY, imgWidth, fullHeightMm, undefined, 'FAST');
+    return pdf;
+  }
+
+  /* Sedikit melebihi satu halaman (< 22%) -> kecilkan agar utuh dalam 1 lembar.
+     Jauh lebih rapi daripada memotong invoice menjadi dua halaman. */
+  if(fullHeightMm <= usableH * 1.22){
+    const ratio = usableH / fullHeightMm;
+    const w = imgWidth * ratio;
+    const h = usableH;
+    const offsetX = mX + (imgWidth - w) / 2;
+    pdf.addImage(canvas.toDataURL('image/png'), 'PNG', offsetX, mY, w, h, undefined, 'FAST');
+    return pdf;
+  }
+
+  /* Multi-halaman dengan titik potong aman */
+  const pageSlicePx = Math.floor(usableH * pxPerMm);
+  const minSlicePx = Math.floor(pageSlicePx * 0.55);
+  let y = 0;
+  let firstPage = true;
+
+  while(y < canvas.height){
+    let sliceEnd = Math.min(y + pageSlicePx, canvas.height);
+
+    /* Bila masih ada sisa konten, geser potongan ke baris kosong terdekat */
+    if(sliceEnd < canvas.height){
+      const safe = findSafeCut(canvas, sliceEnd, y + minSlicePx);
+      if(safe > y + 20) sliceEnd = safe;
+    }
+
+    const sliceH = sliceEnd - y;
+    if(sliceH <= 0) break;
+
+    const slice = document.createElement('canvas');
+    slice.width = canvas.width;
+    slice.height = sliceH;
+    const sctx = slice.getContext('2d');
+    sctx.fillStyle = '#ffffff';
+    sctx.fillRect(0, 0, slice.width, slice.height);
+    sctx.drawImage(canvas, 0, y, canvas.width, sliceH, 0, 0, canvas.width, sliceH);
+
+    if(!firstPage) pdf.addPage();
+    pdf.addImage(slice.toDataURL('image/png'), 'PNG', mX, mY, imgWidth, sliceH / pxPerMm, undefined, 'FAST');
+
+    firstPage = false;
+    y = sliceEnd;
+  }
+
+  return pdf;
+}
+
+/* ▸ CETAK ─────────────────────────────────────────────────── */
+function printInvoice(){
+  /* Pastikan tidak ada popover/modal yang ikut tercetak */
+  closeTierEditor();
+  closeM2Calc();
+  hideProductSuggestions();
+  hideCustSuggestions();
+  ensureTableToolbarVisible();
+
+  const data = gatherInvoiceData();

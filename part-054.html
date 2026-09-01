@@ -1,0 +1,188 @@
+    setSyncStatus('ok', 'Tersinkron ' + syncLastAt.toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'}));
+    if(!silent){
+      if(aktif === 0){
+        /* Koneksi berhasil tetapi tidak ada apa pun untuk disalin.
+           Jelaskan penyebabnya agar tidak dikira sinkronisasi gagal. */
+        alert('SINKRONISASI BERHASIL — TAPI KATALOG KOSONG\n\n'
+          + 'Sambungan ke Supabase bekerja dengan baik.\n'
+          + 'Namun tidak ada produk untuk disalin, karena katalog\n'
+          + 'di alamat ini masih kosong.\n\n'
+          + 'Bila katalog Anda ada di tempat lain — misalnya saat\n'
+          + 'membuka aplikasi lewat klik dua kali berkas — pindahkan\n'
+          + 'dulu lewat Unduh Backup, lalu Pulihkan di alamat ini.\n\n'
+          + 'Penjelasan lengkap ada pada kotak peringatan di bagian\n'
+          + 'atas menu Backup & Restore.');
+      } else if(toPush.length === 0){
+        /* "0 dikirim" mudah dikira gagal, padahal justru artinya
+           semuanya sudah sama. Sebutkan jumlah di server sebagai
+           bukti. */
+        showToast('Sudah sama · ' + aktif + ' produk di sini, ' + remote.length + ' baris di server');
+      } else {
+        showToast('Katalog tersinkron · ' + aktif + ' produk · ' + toPush.length + ' dikirim ke server');
+      }
+    }
+    try{ if(document.getElementById('galleryModal').classList.contains('open')) renderGallery(); }catch(e){}
+    try{ refreshSyncUI(); }catch(e){}
+    return true;
+
+  }catch(err){
+    setSyncStatus('err', 'Sinkron gagal');
+    /* Saat berjalan otomatis, jangan mengganggu dengan dialog —
+       cukup indikator merah di sidebar & catatan di Console. */
+    if(!silent) reportSyncError(err);
+    else console.warn('[Sinkronisasi otomatis]', err && err.status, err && err.body || err);
+    return false;
+  }finally{ syncBusy = false; }
+}
+
+/* Skrip SQL untuk disalin ke Supabase */
+const SYNC_SQL =
+'-- Jalankan sekali di Supabase: SQL Editor -> New query -> Run\n'
++ '\n'
++ 'create table if not exists pp_products (\n'
++ '  id          text primary key,\n'
++ '  name        text not null default \'\',\n'
++ '  description text default \'\',\n'
++ '  harga       text default \'\',\n'
++ '  tiers       text default \'\',\n'
++ '  category    text default \'\',\n'
++ '  image       text default \'\',\n'
++ '  updated_at  timestamptz default now(),\n'
++ '  deleted     boolean default false\n'
++ ');\n'
++ '\n'
++ 'alter table pp_products enable row level security;\n'
++ '\n'
++ '-- Izin baca-tulis untuk anon key.\n'
++ '-- AMAN selama berkas index.html tidak dibagikan ke luar toko.\n'
++ 'drop policy if exists "pp_products anon rw" on pp_products;\n'
++ 'create policy "pp_products anon rw"\n'
++ '  on pp_products for all\n'
++ '  to anon\n'
++ '  using (true)\n'
++ '  with check (true);\n';
+
+/* Skrip ditampilkan di dalam aplikasi, bukan tab baru — tab baru
+   sering diblokir browser dan skripnya jadi tidak terlihat. */
+function showSyncSql(){
+  document.getElementById('sqlText').value = SYNC_SQL;
+  document.getElementById('sqlModal').classList.add('open');
+  copySyncSql(true);
+}
+function closeSqlModal(){ document.getElementById('sqlModal').classList.remove('open'); }
+
+function copySyncSql(silent){
+  const ta = document.getElementById('sqlText');
+  const done = function(){ if(!silent) showToast('Skrip SQL disalin — tinggal tempel di Supabase'); };
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(SYNC_SQL).then(done).catch(function(){
+      ta.select(); try{ document.execCommand('copy'); done(); }catch(e){}
+    });
+  } else {
+    ta.select(); try{ document.execCommand('copy'); done(); }catch(e){}
+  }
+}
+/* Buka SQL Editor Supabase langsung pada project yang dipakai */
+function openSupabaseSqlEditor(){
+  const c = cloudConfig();
+  const m = String(c.url || '').match(/^https:\/\/([a-z0-9]+)\.supabase\.co/i);
+  const url = m ? ('https://supabase.com/dashboard/project/' + m[1] + '/sql/new')
+                : 'https://supabase.com/dashboard';
+  window.open(url, '_blank', 'noopener');
+}
+
+async function toggleCatalogSync(){
+  const tg = document.getElementById('syncCatalogToggle');
+  const on = tg.checked;
+
+  if(!on){
+    setSyncEnabled(false);
+    refreshSyncUI();
+    showToast('Sinkronisasi katalog dimatikan');
+    return;
+  }
+
+  if(!cloudReady()){
+    tg.checked = false;
+    showToast('Isi Pengaturan Koneksi terlebih dahulu', 'error');
+    return;
+  }
+
+  /* Tabel diperiksa DULU. Bila belum ada, pengguna langsung
+     diarahkan ke skrip SQL — tidak dibiarkan menemui kesalahan
+     setelah sinkronisasi berjalan. */
+  showToast('Memeriksa tabel di Supabase...');
+  const cek = await checkSyncTable();
+  if(!cek.ok){
+    tg.checked = false;
+    if(cek.tahap === 'tulis'){
+      /* Baca berhasil tapi tulis ditolak — policy tidak lengkap */
+      if(confirm('IZIN MENULIS BELUM ADA\n\n'
+        + 'Tabel "' + SYNC_TABLE + '" bisa DIBACA, tetapi tidak bisa\n'
+        + 'DITULIS. Artinya policy-nya belum lengkap.\n\n'
+        + 'Jalankan ULANG seluruh skrip SQL — pastikan bagian\n'
+        + '"create policy" ikut terjalankan.\n\n'
+        + 'Buka skrip SQL sekarang?')) showSyncSql();
+    } else {
+      reportSyncError(cek.err);
+    }
+    return;
+  }
+
+  if(!confirm('TABEL SIAP\n\n'
+    + 'Tabel "' + SYNC_TABLE + '" dapat dibaca dan ditulis.\n\n'
+    + 'Saat diaktifkan, katalog di PC ini akan digabungkan\n'
+    + 'dengan yang ada di server.\n\n'
+    + 'Aktifkan sinkronisasi sekarang?')){
+    tg.checked = false;
+    return;
+  }
+
+  setSyncEnabled(true);
+  refreshSyncUI();
+  syncCatalogNow();
+}
+
+function refreshSyncUI(){
+  const on = syncEnabled();
+  const tg = document.getElementById('syncCatalogToggle');
+  if(tg) tg.checked = on;
+  const badge = document.getElementById('syncBadge');
+  const bt = document.getElementById('syncBadgeText');
+  if(badge && bt){
+    badge.className = 'cloud-badge ' + (on ? 'ok' : 'off');
+    bt.textContent = on ? 'Aktif' : 'Nonaktif';
+  }
+  const info = document.getElementById('syncInfo');
+  if(info){
+    const aktif = activeCatalog().length;
+    info.textContent = syncLastAt
+      ? ('Terakhir disinkronkan ' + syncLastAt.toLocaleString('id-ID', {dateStyle:'short', timeStyle:'short'})
+         + ' · ' + aktif + ' produk' + (syncLastPushed != null ? ' · ' + syncLastPushed + ' dikirim' : ''))
+      : (on ? 'Menunggu sinkronisasi pertama' : 'Belum pernah disinkronkan');
+  }
+  const warn = document.getElementById('syncSqlWarn');
+  if(warn) warn.style.display = on ? 'none' : '';
+  const ver = document.getElementById('syncVersionText');
+  if(ver) ver.textContent = APP_VERSION;
+}
+
+function setSyncStatus(kind, text){
+  const el = document.getElementById('syncStatus');
+  if(!el) return;
+  if(!syncEnabled()){ el.style.display = 'none'; return; }
+  el.style.display = 'flex';
+  el.className = 'cloud-status ' + (kind || '');
+  const t = document.getElementById('syncStatusText');
+  if(t) t.textContent = text || '';
+}
+function restartSyncTimer(){
+  clearInterval(syncTimer);
+  if(!syncEnabled()) { setSyncStatus(); return; }
+  syncTimer = setInterval(function(){
+    if(!syncBusy && navigator.onLine) syncCatalogNow(true);
+  }, SYNC_INTERVAL_MS);
+  setSyncStatus('ok', 'Sinkronisasi aktif');
+}
+/* Sinkron ulang saat koneksi pulih */
+window.addEventListener('online', function(){ if(syncEnabled()) syncCatalogNow(true); });

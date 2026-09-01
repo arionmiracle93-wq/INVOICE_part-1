@@ -1,0 +1,138 @@
+  return cost;
+}
+function computeRowPricing(opts){
+  const qty = Math.max(0, Number(opts.qty) || 0);
+  const m2 = Math.max(0, Number(opts.m2) || 0);
+  const base = Math.max(0, Number(opts.base) || 0);
+  const cfg = normalizeTiers(opts.tiers);
+  const area = m2 > 0 ? m2 : 1;
+  const hasTier = cfg.list.length > 0;
+  const units = cfg.basis === 'm2' ? qty * area : qty;
+  let amount = 0, unitPrice = base, tier = null, label = '';
+  if(!hasTier || qty <= 0){
+    amount = base * qty * area;
+    unitPrice = base;
+    label = 'harga dasar';
+  } else if(cfg.mode === 'graduated'){
+    const cost = graduatedCost(units, cfg.list, base);
+    amount = cfg.basis === 'm2' ? cost : cost * area;
+    unitPrice = units > 0 ? cost / units : base;
+    tier = activeTierOf(units, cfg.list);
+    label = 'progresif';
+  } else {
+    const p = tierPriceFor(units, cfg.list);
+    unitPrice = (p == null) ? base : p;
+    amount = cfg.basis === 'm2' ? unitPrice * units : unitPrice * qty * area;
+    tier = activeTierOf(units, cfg.list);
+    label = tier ? ('tier ≥' + formatNum(tier.min)) : 'harga dasar';
+  }
+  return { amount: Math.round(amount), unitPrice: unitPrice, basis: cfg.basis, mode: cfg.mode, units: units, hasTier: hasTier, tier: tier, label: label, area: area, qty: qty };
+}
+
+function getRowTiers(tr){
+  try{ return normalizeTiers(tr.dataset.tiers ? JSON.parse(tr.dataset.tiers) : null); }catch(e){ return normalizeTiers(tr.dataset.tiers); }
+}
+function setRowTiers(tr, cfg){
+  const c = normalizeTiers(cfg);
+  tr.dataset.tiers = JSON.stringify(c);
+  const btn = tr.querySelector('.tier-btn');
+  if(btn){
+    btn.classList.toggle('active', c.list.length > 0);
+    btn.title = c.list.length ? ('Harga bertingkat (' + (c.mode === 'graduated' ? 'progresif' : 'seragam') + ', basis ' + (c.basis === 'm2' ? 'm²' : 'qty') + '): ' + c.list.map(function(t){ return formatNum(t.min) + ' = Rp ' + t.price.toLocaleString('id-ID'); }).join('; ')) : 'Harga bertingkat (mis. 2=8000;11=7000)';
+  }
+}
+
+/* ▸ BARIS TABEL ───────────────────────────────────────────── */
+function addRow(data){
+  rowCounter++;
+  const tbody = document.getElementById('rows');
+  const tr = document.createElement('tr');
+  tr.innerHTML = '<td class="product-field"><textarea class="produk" rows="1" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off" oninput="autoGrow(this)"></textarea></td>'
+    + '<td><textarea class="keterangan" rows="1" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off" oninput="autoGrow(this)"></textarea></td>'
+    + '<td><input class="m2 r-num" type="text" inputmode="decimal"></td>'
+    + '<td><input class="qty r-num" type="text" inputmode="numeric"></td>'
+    + '<td class="harga-cell"><div class="harga-main"><input class="harga r-num" type="text" inputmode="numeric"><button class="tier-btn" onclick="openTierEditor(event,this)" title="Harga bertingkat"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg></button></div></td>'
+    + '<td class="jumlah">Rp 0</td>'
+    + '<td class="del"><button class="del-btn" onclick="delRow(this)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></td>';
+  tbody.appendChild(tr);
+  tr.querySelectorAll('input').forEach(function(inp){
+    if(inp.classList.contains('harga')){
+      inp.addEventListener('input', function(){ if(!isUpdatingHarga){ formatHargaInput(inp); recalcRow(tr); } });
+    } else if(inp.classList.contains('m2')){
+      inp.addEventListener('input', function(){ formatM2Input(inp); recalcRow(tr); });
+      inp.addEventListener('focus', function(){ lastM2Input = inp; });
+      inp.addEventListener('click', function(){ lastM2Input = inp; });
+    } else {
+      inp.addEventListener('input', function(){ recalcRow(tr); });
+    }
+  });
+  tr.querySelectorAll('textarea').forEach(function(ta){ ta.addEventListener('input', function(){ autoGrow(ta); }); });
+  setRowTiers(tr, TIER_DEFAULT);
+  if(data){
+    tr.children[0].querySelector('textarea').value = data.produk || '';
+    tr.children[1].querySelector('textarea').value = data.keterangan || '';
+    tr.querySelector('.m2').value = data.m2 || '';
+    formatM2Input(tr.querySelector('.m2'));
+    tr.querySelector('.qty').value = data.qty || '';
+    const hargaInput = tr.querySelector('.harga');
+    const baseVal = parseThousands(data.baseHarga);
+    hargaInput.value = baseVal ? String(baseVal) : (data.harga || '');
+    formatHargaInput(hargaInput);
+    setRowTiers(tr, normalizeTiers(data.tiers));
+  }
+  tr.querySelectorAll('textarea').forEach(function(ta){ autoGrow(ta); });
+  recalcRow(tr);
+  return tr;
+}
+function delRow(btn){
+  const tr = btn.closest('tr');
+  if(tr) tr.remove();
+  /* Boleh kosong: tampilan "Belum ada item" + tombol Tambah Baris
+     pada kaki tabel sudah menjadi jalan keluarnya. */
+  recalcTotal();
+  scheduleAutosave();
+}
+
+/* Jaring pengaman: pastikan toolbar tabel tidak pernah tersembunyi
+   akibat proses export yang terhenti di tengah jalan. */
+function ensureTableToolbarVisible(){
+  const actions = document.querySelector('.table-foot');
+  if(!actions) return;
+  const toolbar = actions.querySelector('.tf-btns');
+  if(toolbar && toolbar.style.display === 'none') toolbar.style.display = '';
+  actions.querySelectorAll('.add-row-btn, .m2-calc-btn').forEach(function(el){
+    if(el.style.display === 'none') el.style.display = '';
+  });
+  document.querySelectorAll('#rows .del-btn, #rows .tier-btn').forEach(function(el){
+    if(el.style.display === 'none') el.style.display = '';
+  });
+}
+
+function recalcRow(tr){
+  if(!tr || !tr.querySelector('.jumlah')) return;
+  const m2 = parseM2(tr.querySelector('.m2').value);
+  const qty = parseNum(tr.querySelector('.qty').value) || 0;
+  const hargaInput = tr.querySelector('.harga');
+  const base = parseThousands(hargaInput.value) || 0;
+  tr.dataset.baseHarga = base ? String(base) : '';
+  const res = computeRowPricing({qty:qty, m2:m2, base:base, tiers:getRowTiers(tr)});
+  const cell = tr.querySelector('.jumlah');
+  cell.dataset.val = res.amount;
+  cell.dataset.unitPrice = Math.round(res.unitPrice);
+  cell.textContent = formatRp(res.amount);
+  const hargaEfektif = Math.round(res.unitPrice);
+  if(!isUpdatingHarga){
+    isUpdatingHarga = true;
+    if(res.hasTier && qty > 0 && hargaEfektif !== base){
+      hargaInput.value = hargaEfektif.toLocaleString('id-ID');
+      hargaInput.title = 'Harga tier: ' + formatRp(hargaEfektif) + (res.tier ? ' (tier ≥ ' + formatNum(res.tier.min) + ')' : '');
+    } else {
+      if(base > 0){ hargaInput.value = base.toLocaleString('id-ID'); }
+      hargaInput.title = base > 0 ? 'Harga dasar: ' + formatRp(base) : 'Masukkan harga';
+    }
+    isUpdatingHarga = false;
+  }
+  recalcTotal();
+}
+
+/* ▸ EDITOR TIER ───────────────────────────────────────────── */

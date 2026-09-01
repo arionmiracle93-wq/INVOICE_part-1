@@ -1,0 +1,89 @@
+body.theme-dark .kpi-val,body.theme-glass .kpi-val,
+body.theme-dark .rep-period,body.theme-glass .rep-period,
+body.theme-dark .rep-bar-val,body.theme-glass .rep-bar-val{color:#eef5f4}
+body.theme-dark .kpi.omzet,body.theme-glass .kpi.omzet{background:rgba(46,207,186,.12);border-color:rgba(46,207,186,.26)}
+body.theme-dark .kpi.omzet .kpi-val,body.theme-glass .kpi.omzet .kpi-val{color:#3ee0c9}
+body.theme-dark .kpi.piutang,body.theme-glass .kpi.piutang{background:rgba(245,180,27,.13);border-color:rgba(245,180,27,.3)}
+body.theme-dark .kpi.piutang .kpi-val,body.theme-glass .kpi.piutang .kpi-val{color:#f5c451}
+body.theme-dark .kpi-lbl,body.theme-glass .kpi-lbl,
+body.theme-dark .rep-note,body.theme-glass .rep-note,
+body.theme-dark .rep-empty,body.theme-glass .rep-empty,
+body.theme-dark .rep-daily-axis,body.theme-glass .rep-daily-axis{color:#8fa9a6}
+body.theme-dark .rep-sec-title,body.theme-glass .rep-sec-title{color:#3ee0c9}
+body.theme-dark .rep-bar-name,body.theme-glass .rep-bar-name{color:#cfdedc}
+body.theme-dark .rep-bar-track,body.theme-glass .rep-bar-track{background:rgba(255,255,255,.1)}
+body.theme-dark .rep-nav button,body.theme-glass .rep-nav button{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.12);color:#e2eeec}
+body.theme-dark .rep-daily,body.theme-glass .rep-daily{border-bottom-color:rgba(255,255,255,.1)}
+body.theme-dark .rep-day.empty,body.theme-glass .rep-day.empty{background:rgba(255,255,255,.07)}
+body.theme-dark .kpi-delta.up,body.theme-glass .kpi-delta.up{color:#3ee0c9}
+body.theme-dark .kpi-delta.down,body.theme-glass .kpi-delta.down{color:#ff9b9e}
+@media (max-width:620px){ .rep-kpi{grid-template-columns:repeat(2,minmax(0,1fr))} }
+
+/* ===== PENCATATAN CICILAN ===== */
+.t-row.paid-row{background:rgba(7,157,143,.07);font-weight:800;color:var(--teal-dark)}
+.t-row.paid-row .t-label{color:var(--teal-dark)}
+.pay-log-btn{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;margin-top:8px;border:1.5px dashed rgba(7,157,143,.4);background:rgba(7,157,143,.05);color:var(--teal-dark);border-radius:9px;padding:9px 12px;font:inherit;font-size:12px;font-weight:800;cursor:pointer;transition:all .16s ease}
+.pay-log-btn:hover{background:rgba(7,157,143,.12);border-color:var(--teal)}
+.pay-log-btn svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+body.theme-dark .pay-log-btn,body.theme-glass .pay-log-btn{background:rgba(46,207,186,.1);border-color:rgba(46,207,186,.4);color:#3ee0c9}
+body.theme-dark .pay-log-btn:hover,body.theme-glass .pay-log-btn:hover{background:rgba(46,207,186,.2)}
+body.theme-dark .t-row.paid-row,body.theme-glass .t-row.paid-row{background:rgba(46,207,186,.11);color:#3ee0c9}
+body.theme-dark .t-row.paid-row .t-label,body.theme-glass .t-row.paid-row .t-label{color:#3ee0c9}
+@media print{ .pay-log-btn{display:none!important} }
+.pdf-export-host .pay-log-btn{display:none!important}
+
+/* Blok riwayat pembayaran pada invoice */
+.paylog-block{display:none;border:1px solid rgba(17,47,82,.08);border-radius:10px;padding:13px 16px;background:rgba(255,255,255,.72);box-shadow:0 12px 28px rgba(17,47,82,.04)}
+.paylog-block.visible{display:block}
+.paylog-eyebrow{margin-bottom:9px;color:var(--teal);font-size:12px;font-weight:850;letter-spacing:.45px;text-transform:uppercase}
+.paylog-table{width:100%;border-collapse:collapse;font-size:11.5px}
+/* PENTING: aturan global "thead th" (header tabel invoice) memberi
+   latar teal + padding besar ke SEMUA thead — termasuk tabel ini.
+   Latar itu wajib dinetralkan, kalau tidak teks abu-abu jadi
+   tertimpa blok hijau dan sulit dibaca. */
+.paylog-table thead tr{background:transparent!important}
+.paylog-table th{
+  background:transparent!important;
+  text-align:left;padding:0 10px 7px 0;font-size:9.5px;font-weight:850;
+  letter-spacing:.3px;text-transform:uppercase;color:var(--muted);
+  border-bottom:1px solid #e8eeee;text-shadow:none;
+}
+/* Sisi kiri & kanan diberi sedikit ruang. Tanpa ini huruf pertama
+   "TANGGAL" dan huruf terakhir "JUMLAH" tersentuh tepi tabel —
+   apalagi karena ada letter-spacing yang menambah lebar teks. */
+.paylog-table th:first-child,.paylog-table td:first-child{padding-left:3px}
+.paylog-table th:last-child,.paylog-table td:last-child{padding-right:3px}
+.paylog-table th.r,.paylog-table td.r{text-align:right;padding-right:3px}
+.paylog-table td{padding:6px 10px 6px 0;border-bottom:1px solid #f0f4f4;color:var(--ink);vertical-align:top}
+.paylog-table tr:last-child td{border-bottom:none}
+.paylog-table td.amt{font-weight:800;white-space:nowrap;font-variant-numeric:tabular-nums;color:var(--navy)}
+.paylog-sum{display:flex;justify-content:space-between;gap:12px;margin-top:9px;padding-top:9px;border-top:1.5px solid #e8eeee;font-size:12.5px;font-weight:850;color:var(--teal-dark)}
+body.theme-dark .paylog-block,body.theme-glass .paylog-block{background:rgba(255,255,255,.03);border-color:rgba(255,255,255,.07);box-shadow:none}
+body.theme-dark .paylog-eyebrow,body.theme-glass .paylog-eyebrow{color:#2ecfba}
+body.theme-dark .paylog-table td,body.theme-glass .paylog-table td{color:#cfdedc;border-bottom-color:rgba(255,255,255,.06)}
+body.theme-dark .paylog-table th,body.theme-glass .paylog-table th{color:#8fa9a6;border-bottom-color:rgba(255,255,255,.1);background:transparent!important}
+body.theme-dark .paylog-table thead tr,body.theme-glass .paylog-table thead tr{background:transparent!important}
+body.theme-dark .paylog-table td.amt,body.theme-glass .paylog-table td.amt{color:#eef5f4}
+body.theme-dark .paylog-sum,body.theme-glass .paylog-sum{color:#3ee0c9;border-top-color:rgba(255,255,255,.12)}
+
+/* Modal pencatatan pembayaran */
+.pl-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.pl-cell{padding:11px 10px;border-radius:10px;border:1px solid #e3ebeb;background:#fbfdfd;text-align:center}
+.pl-cell.paid{background:rgba(7,157,143,.08);border-color:rgba(7,157,143,.22)}
+.pl-cell.rest{background:rgba(245,180,27,.1);border-color:rgba(245,180,27,.3)}
+.pl-cell.rest.done{background:rgba(7,157,143,.08);border-color:rgba(7,157,143,.22)}
+.pl-num{font-size:14px;font-weight:850;line-height:1.15;font-variant-numeric:tabular-nums;color:var(--navy)}
+.pl-cell.paid .pl-num{color:var(--teal-dark)}
+.pl-cell.rest .pl-num{color:#8a6206}
+.pl-cell.rest.done .pl-num{color:var(--teal-dark)}
+.pl-lbl{font-size:9.5px;font-weight:800;letter-spacing:.25px;color:var(--muted);margin-top:3px;text-transform:uppercase}
+.pl-list{display:flex;flex-direction:column;gap:6px;max-height:220px;overflow:auto}
+.pl-item{display:flex;align-items:center;gap:10px;padding:9px 11px;border:1px solid #e6eded;border-radius:9px;background:#fbfdfd}
+.pl-item .pl-main{flex:1;min-width:0}
+.pl-item .pl-top{font-size:12px;font-weight:800;color:var(--navy)}
+.pl-item .pl-sub{font-size:10.5px;color:var(--muted);margin-top:2px}
+.pl-item .pl-amt{font-size:13px;font-weight:850;color:var(--teal-dark);white-space:nowrap;font-variant-numeric:tabular-nums}
+.pl-item .pl-rm{flex:none;border:none;background:transparent;color:var(--red);cursor:pointer;padding:5px;border-radius:6px;display:flex}
+.pl-item .pl-rm:hover{background:#fff0f1}
+.pl-item .pl-rm svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round}
+.pl-item.dp{background:rgba(7,157,143,.06);border-color:rgba(7,157,143,.2)}

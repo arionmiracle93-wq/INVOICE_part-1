@@ -1,0 +1,108 @@
+  .actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .btn{min-height:54px;padding:11px}
+  .sidebar-footer{display:none}
+  .invoice-frame{padding:10px;border-radius:16px}
+  .card{padding:24px 18px}
+  .head{flex-direction:column}
+  .head-right{align-items:flex-start;text-align:left;min-width:0;width:100%}
+  .meta-row{width:100%;justify-content:space-between}
+  .table-actions-row{flex-direction:column}
+  .totals{width:100%}
+}
+@media (max-width:620px){
+  .actions{grid-template-columns:1fr}
+  .brand{flex-direction:column;gap:10px}
+  .company-name{font-size:24px;flex-wrap:wrap}
+  .contact input{width:220px}
+  .inv-title{font-size:32px}
+  .meta-row{align-items:flex-start;flex-direction:column;gap:6px}
+  .meta-row input{width:100%}
+  .billto{align-items:flex-start}
+  .pay-block{width:100%}
+}
+
+/* CSS PART 03/10 - DARK THEME */
+body.theme-dark{background:radial-gradient(circle at 14% 8%, rgba(11,74,68,.5) 0 16%, transparent 42%),radial-gradient(circle at 88% 92%, rgba(9,58,54,.42) 0 14%, transparent 40%),linear-gradient(140deg, #04100f 0%, #05100f 40%, #030b0b 100%);color:#dbe7e6}
+body.theme-dark::before{background:radial-gradient(circle, rgba(7,157,143,.22), transparent 68%)}
+body.theme-dark::after{background:radial-gradient(circle, rgba(7,157,143,.12), transparent 68%)}
+body.theme-dark .sidebar{background:linear-gradient(155deg, rgba(12,32,31,.92), rgba(6,18,18,.86));border-color:rgba(255,255,255,.07);box-shadow:0 30px 70px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.05)}
+body.theme-dark .sidebar::before{background:linear-gradient(135deg, rgba(7,157,143,.16), rgba(255,255,255,0))}
+body.theme-dark .sidebar-title{color:#eef5f4}
+body.theme-dark .sidebar-title span{color:#2ecfba}
+body.theme-dark .actions::before,body.theme-dark .sidebar-footer::before{background:rgba(255,255,255,.09);box-shadow:none}
+body.theme-dark .btn{color:#dbe7e6}
+body.theme-dark .btn:hover,body.theme-dark .btn:focus-visible{
+  background:linear-gradient(100deg, rgba(46,207,186,.14), rgba(46,207,186,.04));
+  border-color:rgba(46,207,186,.55);
+  box-shadow:0 0 0 3px rgba(46,207,186,.06), 0 8px 24px rgba(0,0,0,.4);
+  color:#8ff0e0;
+}
+body.theme-dark .btn:hover .btn-icon,body.theme-dark .btn:focus-visible .btn-icon{
+  background:rgba(46,207,186,.12);
+  box-shadow:inset 0 0 0 1.5px rgba(46,207,186,.6), 0 0 14px rgba(46,207,186,.14);
+  color:#3ee0c9 !important;
+}
+body.theme-dark .btn-outline-red:hover,body.theme-dark .btn-outline-red:focus-visible{
+  background:linear-gradient(100deg, rgba(239,61,67,.16), rgba(239,61,67,.05));
+  border-color:rgba(239,61,67,.5);color:#ff9b9e;
+}
+body.theme-dark .btn-outline-red:hover .btn-icon,body.theme-dark .btn-outline-red:focus-visible .btn-icon{
+  background:rgba(239,61,67,.12);
+  box-shadow:inset 0 0 0 1.5px rgba(239,61,67,.5);color:#ff9b9e !important;
+}
+body.theme-dark .btn-settings::before{background:rgba(255,255,255,.09)}
+body.theme-dark .btn-primary{background:linear-gradient(135deg, rgba(9,74,68,.85), rgba(7,101,92,.6));border-color:rgba(46,207,186,.45);color:#9ff0e2;box-shadow:0 14px 30px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.06)}
+body.theme-dark .btn-primary:hover{background:linear-gradient(135deg, rgba(10,92,84,.9), rgba(9,116,106,.7));color:#c6fbf0}
+body.theme-dark .btn-icon{background:rgba(255,255,255,.07);box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)}
+body.theme-dark .sidebar .btn-icon{color:#fff !important}
+body.theme-dark .sidebar .btn-icon.icon-fill{fill:#fff !important;stroke:none}
+/* Spesifisitas dinaikkan agar ikon tetap berubah teal saat hover,
+   mengalahkan aturan "ikon sidebar putih" di atas. */
+body.theme-dark .sidebar .btn:hover .btn-icon,
+body.theme-dark .sidebar .btn:focus-visible .btn-icon{color:#3ee0c9 !important}
+body.theme-dark .sidebar .btn:hover .btn-icon.icon-fill,
+body.theme-dark .sidebar .btn:focus-visible .btn-icon.icon-fill{fill:#3ee0c9 !important}
+body.theme-dark .sidebar .btn-outline-red:hover .btn-icon,
+body.theme-dark .sidebar .btn-outline-red:focus-visible .btn-icon{color:#ff9b9e !important}
+body.theme-dark .btn-primary .btn-icon{background:rgba(46,207,186,.14);box-shadow:inset 0 0 0 1px rgba(46,207,186,.35)}
+body.theme-dark .icon-dark{color:#e2ecea}
+
+body.theme-dark .invoice-frame{background:rgba(9,24,24,.6);border-color:rgba(255,255,255,.07);box-shadow:0 32px 80px rgba(0,0,0,.55)}
+body.theme-dark .card{background:linear-gradient(180deg, #071615 0%, #050f0f 100%);box-shadow:inset 0 0 0 1px rgba(255,255,255,.05), 0 18px 46px rgba(0,0,0,.5)}
+body.theme-dark .shape-mist{background:linear-gradient(135deg, rgba(7,157,143,.16), transparent)}
+body.theme-dark .company-name .navy-text{color:#f2f8f7}
+body.theme-dark .company-name .teal-text{color:#2ecfba}
+body.theme-dark .contact{color:#a9c1be}
+body.theme-dark .contact input{color:#c3d6d3}
+body.theme-dark .contact-icon{color:#2ecfba}
+body.theme-dark .inv-title{color:#2ecfba}
+body.theme-dark .meta-row{color:#dbe7e6}
+body.theme-dark .meta-row input{background:linear-gradient(180deg, rgba(255,255,255,.09), rgba(255,255,255,.05));color:#eef5f4;box-shadow:inset 0 0 0 1px rgba(255,255,255,.06)}
+body.theme-dark .billto{background:rgba(255,255,255,.035);border-color:rgba(255,255,255,.07);box-shadow:none}
+body.theme-dark .billto label{color:#2ecfba}
+body.theme-dark .billto input{color:#f2f8f7}
+body.theme-dark .bill-icon,body.theme-dark .pay-icon{color:#2ecfba}
+body.theme-dark .table-wrap{box-shadow:0 15px 32px rgba(0,0,0,.4)}
+body.theme-dark table{background:#08201f;border-color:rgba(255,255,255,.07)}
+body.theme-dark thead th{background:linear-gradient(135deg, #0b4a44, #0a3a36);color:#dff6f2}
+body.theme-dark tbody td{background:#0a1a19;border-bottom-color:rgba(255,255,255,.05);color:#dbe7e6}
+body.theme-dark tbody tr:nth-child(even) td{background:#0d201f}
+body.theme-dark tbody tr:focus-within td{background:#122b29}
+body.theme-dark tbody input,body.theme-dark tbody textarea{color:#e6efee}
+body.theme-dark td.jumlah{color:#f0f7f6}
+body.theme-dark .del-btn:hover{background:rgba(239,61,67,.14)}
+body.theme-dark .add-row-btn{background:transparent;color:#2ecfba;border-color:rgba(46,207,186,.55)}
+body.theme-dark .add-row-btn:hover{background:rgba(46,207,186,.1)}
+body.theme-dark .totals-box{background:#0a1a19;border-color:rgba(255,255,255,.07);box-shadow:0 13px 28px rgba(0,0,0,.4)}
+body.theme-dark .t-row{border-bottom-color:rgba(255,255,255,.06);color:#dbe7e6}
+body.theme-dark .t-row.total{background:linear-gradient(135deg, #0b4a44, #0a3733);color:#eafffb}
+body.theme-dark .t-row.dp input{color:#e6efee;border-bottom-color:rgba(255,255,255,.18)}
+body.theme-dark .t-row.sisa{background:rgba(46,207,186,.1);color:#2ecfba}
+body.theme-dark .adjustment-row,body.theme-dark .adjustment-row .t-label{color:#c3d6d3}
+body.theme-dark .adjustment-value input{color:#e6efee;border-bottom-color:rgba(255,255,255,.18)}
+body.theme-dark .adjustment-value span,body.theme-dark .adjustment-output{color:#9bb5b1}
+body.theme-dark .pay-method-card{background:rgba(255,255,255,.035);border-color:rgba(255,255,255,.07);box-shadow:none}
+body.theme-dark .pay-label{color:#eef5f4}
+body.theme-dark .pay-method{color:#c3d6d3;background-color:rgba(255,255,255,.05);border-color:rgba(255,255,255,.12);background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%232ecfba' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")}
+body.theme-dark .pay-method:hover,body.theme-dark .pay-method:focus{border-color:rgba(46,207,186,.55);background-color:rgba(46,207,186,.09)}
+

@@ -1,0 +1,154 @@
+        </button>
+        <button class="modal-close" onclick="closeGallery()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+      </div>
+    </div>
+    <div class="modal-body">
+
+      <div class="gal-toolbar">
+        <input class="gal-search" id="galSearch" placeholder="Cari produk..." autocomplete="off" oninput="renderGallery()">
+        <button class="modal-btn primary" onclick="openProductForm(-1)">
+          <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Produk Baru
+        </button>
+      </div>
+
+      <div class="gal-cats" id="galCats"></div>
+
+      <div class="gal-grid" id="galGrid"></div>
+
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+        <span class="gal-count" id="galCount"></span>
+        <span class="gal-count" id="galStorageNote"></span>
+      </div>
+
+    </div>
+    <div class="modal-foot">
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="modal-btn" onclick="openCategoryManager()">Kelola Kategori</button>
+        <button class="modal-btn" onclick="diagnoseImages()" title="Periksa kenapa gambar tidak tampil">Periksa Gambar</button>
+      </div>
+      <div class="modal-foot-right">
+        <button class="modal-btn" onclick="closeGallery()">Tutup</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL FORMULIR PRODUK -->
+<div class="modal-backdrop" id="productFormModal" style="z-index:55">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title" id="pfTitle">Produk Baru</div>
+        <div class="modal-sub">Tersimpan di katalog, bisa dipakai berulang</div>
+      </div>
+      <button class="modal-close" onclick="closeProductForm()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="modal-body">
+
+      <div class="pf-img-row">
+        <input type="file" id="pfImageFile" accept="image/png,image/jpeg,image/webp" style="display:none" onchange="handleProductImage(event)">
+        <div class="pf-thumb" id="pfThumb" onclick="document.getElementById('pfImageFile').click()">
+          <div class="ph">
+            <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+            <span>Tambah<br>Gambar</span>
+          </div>
+        </div>
+        <div class="pf-img-side">
+          <div class="pf-hint" id="pfImgInfo">
+            Opsional. Gambar otomatis dikecilkan ke 400&nbsp;px agar hemat penyimpanan.
+          </div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <button class="modal-btn" style="padding:6px 11px;font-size:11.5px" onclick="document.getElementById('pfImageFile').click()">Pilih Gambar</button>
+            <button class="modal-btn ghost-red" style="padding:6px 11px;font-size:11.5px" onclick="removeProductImage()">Hapus</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Nama Produk</label>
+        <input id="pfName" placeholder="Contoh: Banner Flexi China 280gr" autocomplete="off">
+      </div>
+
+      <div class="pf-grid2">
+        <div class="field">
+          <label>Kategori</label>
+          <select class="cat-select" id="pfCategory"></select>
+        </div>
+        <div class="field">
+          <label>Harga Dasar</label>
+          <input id="pfPrice" inputmode="numeric" placeholder="0" oninput="formatHargaInput(this)">
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Keterangan</label>
+        <input id="pfDesc" placeholder="Contoh: Outdoor — hitung per m², include mata ayam" autocomplete="off">
+      </div>
+
+      <div class="field">
+        <label>Harga Bertingkat <span style="font-weight:600;color:var(--muted)">(opsional)</span></label>
+        <input id="pfTiers" placeholder="2=8000;11=7000" autocomplete="off" spellcheck="false" style="font-family:ui-monospace,monospace;font-size:12px">
+        <div class="hint">Contoh: <b>5=23000;20=21000</b> — beli ≥5 jadi Rp 23.000. Tambahkan <b>basis=m2</b> bila tingkatan dihitung dari luas, atau <b>mode=progresif</b> untuk harga berjenjang.</div>
+      </div>
+
+    </div>
+    <div class="modal-foot">
+      <button class="modal-btn ghost-red" id="pfDeleteBtn" onclick="deleteProductFromForm()">Hapus Produk</button>
+      <div class="modal-foot-right">
+        <button class="modal-btn" onclick="closeProductForm()">Batal</button>
+        <button class="modal-btn primary" onclick="saveProductForm()">
+          <svg viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg>
+          Simpan Produk
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL LAPORAN BULANAN -->
+<div class="modal-backdrop" id="reportModal">
+  <div class="modal" style="max-width:600px">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title">Laporan Bulanan</div>
+        <div class="modal-sub">Ringkasan penjualan dari riwayat invoice</div>
+      </div>
+      <button class="modal-close" onclick="closeReport()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="modal-body">
+
+      <div class="rep-head">
+        <div class="rep-nav">
+          <button onclick="shiftReportMonth(-1)" title="Bulan sebelumnya"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></button>
+          <div class="rep-period" id="repPeriod">—</div>
+          <button onclick="shiftReportMonth(1)" title="Bulan berikutnya"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></button>
+        </div>
+        <span class="spacer"></span>
+        <button class="modal-btn" style="padding:7px 12px;font-size:11.5px" onclick="setReportMonth(currentMonthKey())">Bulan Ini</button>
+      </div>
+
+      <div class="rep-kpi">
+        <div class="kpi omzet">
+          <div class="kpi-val" id="repOmzet">Rp 0</div>
+          <div class="kpi-lbl">Omzet</div>
+          <div class="kpi-delta flat" id="repOmzetDelta"></div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-val" id="repCount">0</div>
+          <div class="kpi-lbl">Invoice</div>
+          <div class="kpi-delta flat" id="repCountDelta"></div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-val" id="repAvg">Rp 0</div>
+          <div class="kpi-lbl">Rata-rata</div>
+        </div>
+        <div class="kpi piutang">
+          <div class="kpi-val" id="repPiutang">Rp 0</div>
+          <div class="kpi-lbl">Belum Dibayar</div>
+        </div>
+      </div>
+
+      <div class="rep-sec">
+        <div class="rep-sec-title">
+          <svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>

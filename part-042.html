@@ -1,0 +1,177 @@
+/* ▸ STATE & KONSTANTA ─────────────────────────────────────── */
+let rowCounter = 0;
+let invoicePayments = [];   /* daftar cicilan invoice yang sedang dibuka */
+let settingsTab = 'usaha';  /* tab Pengaturan yang terakhir dibuka */
+let productCatalog = [];
+let autosaveTimer = null;
+let isApplyingData = false;
+let isUpdatingHarga = false;
+
+const DRAFT_KEY = 'pp_invoice_draft_v1';
+const HISTORY_KEY = 'pp_invoice_history_v1';
+const SEQUENCE_KEY = 'pp_invoice_sequence_v1';
+
+/* ▸ HELPER ANGKA ──────────────────────────────────────────── */
+function formatRp(num){
+  if(isNaN(num)) num = 0;
+  return 'Rp ' + Math.round(num).toLocaleString('id-ID');
+}
+function formatNum(n, dec){
+  const d = dec == null ? 2 : dec;
+  return Number(n || 0).toLocaleString('id-ID', {minimumFractionDigits:0, maximumFractionDigits:d});
+}
+function parseLoose(v){
+  if(typeof v === 'number') return isFinite(v) ? v : 0;
+  let s = String(v == null ? '' : v).trim();
+  if(!s) return 0;
+  s = s.replace(/\s/g,'');
+  const hasComma = s.indexOf(',') !== -1;
+  const hasDot = s.indexOf('.') !== -1;
+  if(hasComma && hasDot){ s = s.replace(/\./g,'').replace(',', '.'); }
+  else if(hasComma){ s = s.replace(/\./g,'').replace(',', '.'); }
+  else {
+    if(/^-?\d{1,3}(\.\d{3})+$/.test(s)) s = s.replace(/\./g,'');
+  }
+  const n = parseFloat(s.replace(/[^0-9.\-]/g,''));
+  return isNaN(n) ? 0 : n;
+}
+function parseNum(v){ return parseLoose(v); }
+function parseThousands(v){
+  const digits = String(v == null ? '' : v).replace(/[^0-9]/g,'');
+  return digits ? parseInt(digits, 10) : 0;
+}
+function parseM2(v){ return parseLoose(v); }
+
+function formatHargaInput(inp){
+  if(!inp) return;
+  const digits = inp.value.replace(/[^0-9]/g,'');
+  const caretFromEnd = inp.value.length - (inp.selectionEnd || inp.value.length);
+  inp.value = digits ? parseInt(digits, 10).toLocaleString('id-ID') : '';
+  const pos = Math.max(0, inp.value.length - caretFromEnd);
+  if(typeof inp.setSelectionRange === 'function'){ try{ inp.setSelectionRange(pos, pos); }catch(e){} }
+}
+function formatM2Input(inp){
+  if(!inp) return;
+  const caretFromEnd = inp.value.length - (inp.selectionEnd || inp.value.length);
+  let raw = inp.value.replace(/[^0-9,]/g, '');
+  const firstComma = raw.indexOf(',');
+  if(firstComma !== -1){ raw = raw.slice(0, firstComma + 1) + raw.slice(firstComma + 1).replace(/,/g, ''); }
+  let parts = raw.split(',');
+  let intPart = parts[0], decPart = parts[1];
+  const formattedInt = intPart ? parseInt(intPart, 10).toLocaleString('id-ID') : '';
+  inp.value = raw.indexOf(',') !== -1 ? formattedInt + ',' + (decPart || '') : formattedInt;
+  const pos = Math.max(0, inp.value.length - caretFromEnd);
+  if(typeof inp.setSelectionRange === 'function'){ try{ inp.setSelectionRange(pos, pos); }catch(e){} }
+}
+function autoGrow(ta){ if(!ta) return; ta.style.height = 'auto'; ta.style.height = ta.scrollHeight + 'px'; }
+/* Tanda kutip ikut diamankan karena hasil fungsi ini juga dipakai
+   di dalam atribut HTML (alt, title, value). Tanpa itu, nama yang
+   mengandung " akan merusak tag di sekitarnya. */
+function escapeHtml(s){
+  const div = document.createElement('div');
+  div.textContent = s == null ? '' : s;
+  return div.innerHTML.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+/* ▸ HARGA BERTINGKAT ──────────────────────────────────────────
+   Struktur: {mode:'flat'|'graduated', basis:'qty'|'m2', list:[...]}
+   · flat      = semua unit memakai harga tier yang tercapai
+   · graduated = progresif per lapisan (seperti tarif listrik)
+   ─────────────────────────────────────────────────────────── */
+const TIER_DEFAULT = {mode:'flat', basis:'qty', list:[]};
+
+function tierNumber(str){
+  const s = String(str == null ? '' : str).trim();
+  if(!s) return 0;
+  return parseLoose(s);
+}
+function tierPriceNumber(str){
+  const digits = String(str == null ? '' : str).replace(/[^0-9]/g,'');
+  return digits ? parseInt(digits, 10) : 0;
+}
+
+function sanitizeTierList(list){
+  const map = new Map();
+  (Array.isArray(list) ? list : []).forEach(function(t){
+    if(!t) return;
+    const min = Number(t.min);
+    const price = Number(t.price);
+    if(!isFinite(min) || min <= 0) return;
+    if(!isFinite(price) || price < 0) return;
+    map.set(min, {min:min, price:Math.round(price)});
+  });
+  return Array.from(map.values()).sort(function(a,b){ return a.min - b.min; });
+}
+
+function parseTiers(text){
+  const cfg = {mode:'flat', basis:'qty', list:[]};
+  const raw = String(text == null ? '' : text);
+  if(!raw.trim()) return cfg;
+  const tokens = raw.split(/[\n\r;|]+/);
+  const pairRe = /(?:>=?\s*|min\.?\s*)?(\d[\d.,]*)\s*(?:-\s*\d[\d.,]*\s*)?(?:pcs|pc|lbr|lembar|m2|m²)?\s*[=:]\s*(?:rp\.?\s*)?(\d[\d.,]*)/gi;
+  tokens.forEach(function(token){
+    const t = String(token).trim();
+    if(!t) return;
+    const modeMatch = t.match(/^\s*(?:mode|tipe|jenis)\s*[=:]\s*([a-z]+)/i);
+    if(modeMatch){
+      cfg.mode = /prog|grad|berjenjang|bertahap|akum/i.test(modeMatch[1]) ? 'graduated' : 'flat';
+      return;
+    }
+    const basisMatch = t.match(/^\s*(?:basis|dasar|per|hitung)\s*[=:]\s*([a-z0-9²]+)/i);
+    if(basisMatch){
+      cfg.basis = /m2|m²|luas|meter/i.test(basisMatch[1]) ? 'm2' : 'qty';
+      return;
+    }
+    pairRe.lastIndex = 0;
+    let m;
+    while((m = pairRe.exec(t)) !== null){
+      cfg.list.push({min: tierNumber(m[1]), price: tierPriceNumber(m[2])});
+    }
+  });
+  cfg.list = sanitizeTierList(cfg.list);
+  return cfg;
+}
+
+function normalizeTiers(value){
+  if(!value) return {mode:'flat', basis:'qty', list:[]};
+  if(Array.isArray(value)) return {mode:'flat', basis:'qty', list:sanitizeTierList(value)};
+  if(typeof value === 'object'){
+    return {
+      mode: value.mode === 'graduated' ? 'graduated' : 'flat',
+      basis: value.basis === 'm2' ? 'm2' : 'qty',
+      list: sanitizeTierList(value.list || value.tiers || [])
+    };
+  }
+  if(typeof value === 'string'){
+    const s = value.trim();
+    if(!s) return {mode:'flat', basis:'qty', list:[]};
+    if(s.charAt(0) === '[' || s.charAt(0) === '{'){
+      try{ return normalizeTiers(JSON.parse(s)); }catch(e){}
+    }
+    return parseTiers(s);
+  }
+  return {mode:'flat', basis:'qty', list:[]};
+}
+
+/* Harga satuan pada mode seragam */
+function tierPriceFor(units, list){
+  let found = null;
+  (list || []).forEach(function(t){ if(units + 1e-9 >= t.min) found = t; });
+  return found ? found.price : null;
+}
+function activeTierOf(units, list){
+  let found = null;
+  (list || []).forEach(function(t){ if(units + 1e-9 >= t.min) found = t; });
+  return found;
+}
+function graduatedCost(units, list, basePrice){
+  const u = Math.max(0, Number(units) || 0);
+  if(!u) return 0;
+  const tiers = sanitizeTierList(list);
+  let cost = 0, prevBound = 0, prevPrice = Number(basePrice) || 0;
+  for(let i = 0; i < tiers.length; i++){
+    const bound = tiers[i].min;
+    if(u > bound){ cost += (bound - prevBound) * prevPrice; prevBound = bound; prevPrice = tiers[i].price; }
+    else break;
+  }
+  cost += (u - prevBound) * prevPrice;

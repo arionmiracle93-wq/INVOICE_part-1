@@ -1,0 +1,169 @@
+  if(!validateAnonKey(key)) return;
+  /* Beri tahu bila ada path yang dibuang, supaya tidak bingung
+     melihat isian berubah sendiri */
+  if(url && rawUrl.replace(/\/+$/, '') !== url){
+    document.getElementById('cfgSupaUrl').value = url;
+    showToast('URL dirapikan menjadi ' + url);
+  }
+
+  /* PENTING: gabungkan dengan pengaturan yang sudah ada.
+     Menulis objek baru dari nol akan MENGHAPUS field lain —
+     termasuk syncCatalog — sehingga sinkronisasi mati diam-diam
+     padahal centangnya masih terlihat aktif. */
+  const prevRaw = readLS(CLOUD_CFG_KEY) || {};
+  writeLS(CLOUD_CFG_KEY, Object.assign({}, prevRaw, {
+    url: url, key: key, bucket: bucket, interval: interval
+  }));
+  saveDevice({
+    name: document.getElementById('cfgDeviceName').value.trim(),
+    code: document.getElementById('cfgDeviceCode').value.trim().toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 3)
+  });
+  document.getElementById('cloudIntervalLabel').textContent = interval;
+  document.getElementById('cloudConfig').classList.remove('open');
+  setCloudStatus('ok', 'Cloud siap');
+  refreshCloudLastInfo();
+  restartCloudTimer();
+  /* Segarkan tampilan sinkronisasi agar centang & badge selalu
+     mencerminkan keadaan sebenarnya */
+  try{ refreshSyncUI(); restartSyncTimer(); }catch(e){}
+  showToast('Pengaturan cloud disimpan');
+}
+function toggleCloudAuto(){
+  const on = document.getElementById('cloudAutoToggle').checked;
+  if(on && !cloudReady()){
+    document.getElementById('cloudAutoToggle').checked = false;
+    showToast('Isi pengaturan koneksi terlebih dahulu', 'error');
+    document.getElementById('cloudConfig').classList.add('open');
+    toggleCloudConfig(); toggleCloudConfig();
+    return;
+  }
+  /* Sama seperti saveCloudConfig: gabungkan, jangan timpa total */
+  const prevRaw = readLS(CLOUD_CFG_KEY) || {};
+  writeLS(CLOUD_CFG_KEY, Object.assign({}, prevRaw, {auto: on}));
+  restartCloudTimer();
+  setCloudStatus('ok', on ? 'Backup otomatis aktif' : 'Backup manual');
+  try{ refreshSyncUI(); }catch(e){}
+  showToast(on ? 'Backup otomatis diaktifkan' : 'Backup otomatis dimatikan');
+  if(on){ cloudDirty = true; cloudBackupNow(true); }
+}
+
+/* ---------- REST helper Supabase Storage ---------- */
+function supaHeaders(extra){
+  const c = cloudConfig();
+  return Object.assign({apikey: c.key, Authorization: 'Bearer ' + c.key}, extra || {});
+}
+async function supaUpload(path, textBody){
+  const c = cloudConfig();
+  const res = await fetch(c.url + '/storage/v1/object/' + encodeURIComponent(c.bucket) + '/' + path, {
+    method: 'POST',
+    headers: supaHeaders({'Content-Type':'application/json', 'x-upsert':'true', 'cache-control':'3600'}),
+    body: textBody
+  });
+  if(!res.ok) throw new Error('Upload gagal (' + res.status + '): ' + (await res.text()).slice(0, 160));
+  return true;
+}
+async function supaList(prefix){
+  const c = cloudConfig();
+  const res = await fetch(c.url + '/storage/v1/object/list/' + encodeURIComponent(c.bucket), {
+    method: 'POST',
+    headers: supaHeaders({'Content-Type':'application/json'}),
+    body: JSON.stringify({prefix: prefix || '', limit: 200, offset: 0, sortBy:{column:'name', order:'desc'}})
+  });
+  if(!res.ok) throw new Error('List gagal (' + res.status + '): ' + (await res.text()).slice(0, 160));
+  return await res.json();
+}
+async function supaDownload(path){
+  const c = cloudConfig();
+  const res = await fetch(c.url + '/storage/v1/object/' + encodeURIComponent(c.bucket) + '/' + path, {
+    method: 'GET', headers: supaHeaders()
+  });
+  if(!res.ok) throw new Error('Unduh gagal (' + res.status + ')');
+  return await res.json();
+}
+async function supaDelete(paths){
+  const c = cloudConfig();
+  await fetch(c.url + '/storage/v1/object/' + encodeURIComponent(c.bucket), {
+    method: 'DELETE',
+    headers: supaHeaders({'Content-Type':'application/json'}),
+    body: JSON.stringify({prefixes: paths})
+  }).catch(function(){});
+}
+
+async function testCloudConnection(){
+  const rawUrl = document.getElementById('cfgSupaUrl').value.trim();
+  const url = normalizeSupabaseUrl(rawUrl);
+  const key = document.getElementById('cfgSupaKey').value.trim();
+  const bucket = document.getElementById('cfgSupaBucket').value.trim() || 'invoice-backup';
+  if(!url){ showToast('Project URL wajib diisi', 'error'); return; }
+  /* Periksa bentuk kunci lebih dulu — lebih cepat & jelas
+     daripada menunggu server membalas "akses ditolak". */
+  if(!validateAnonKey(key)) return;
+
+  /* Rapikan isian bila ada path yang menempel */
+  if(rawUrl.replace(/\/+$/, '') !== url) document.getElementById('cfgSupaUrl').value = url;
+
+  showToast('Menguji koneksi...');
+  const endpoint = url + '/storage/v1/object/list/' + encodeURIComponent(bucket);
+
+  try{
+    const res = await fetch(endpoint, {
+      method:'POST',
+      headers:{apikey:key, Authorization:'Bearer ' + key, 'Content-Type':'application/json'},
+      body: JSON.stringify({prefix:'', limit:1, offset:0})
+    });
+    if(res.ok){
+      alert('KONEKSI BERHASIL\n\n'
+        + 'Project : ' + url + '\n'
+        + 'Bucket  : ' + bucket + '\n\n'
+        + 'Bucket dapat diakses. Klik "Simpan Koneksi" untuk\n'
+        + 'menyimpan pengaturan ini.');
+      return;
+    }
+
+    const body = await res.text();
+    let hint = '';
+
+    /* PGRST = PostgREST (database API). Bila kode ini muncul,
+       berarti permintaan nyasar ke database, bukan Storage —
+       hampir selalu karena Project URL mengandung path. */
+    if(/PGRST/i.test(body)){
+      hint = 'Permintaan diarahkan ke Database API, bukan Storage.\n\n'
+           + 'Penyebab tersering: Project URL mengandung path\n'
+           + '(misalnya diakhiri /rest/v1).\n\n'
+           + 'Isi kolom URL dengan bentuk dasar saja:\n'
+           + '    https://xxxxxxxx.supabase.co';
+    } else if(res.status === 404){
+      hint = 'Alamat tidak ditemukan.\n\n'
+           + 'Periksa:\n'
+           + '  · Project URL sudah benar\n'
+           + '  · Bucket "' + bucket + '" sudah dibuat di menu Storage';
+    } else if(res.status === 400 && /not found|does not exist/i.test(body)){
+      hint = 'Bucket "' + bucket + '" belum ada.\n\n'
+           + 'Buat di dasbor Supabase: Storage → New bucket';
+    } else if(res.status === 401 || res.status === 403){
+      hint = 'Akses ditolak.\n\n'
+           + 'Periksa berurutan:\n\n'
+           + '1. ANON KEY sudah benar?\n'
+           + '   Bentuknya diawali "eyJ" dan sangat panjang.\n'
+           + '   Yang terisi sekarang:\n'
+           + '   ' + key.slice(0, 45) + (key.length > 45 ? '...' : '') + '\n\n'
+           + '2. Bucket "' + bucket + '" sudah dibuat?\n\n'
+           + '3. RLS policy untuk bucket sudah dipasang?\n'
+           + '   Lihat panduan "Cara menyiapkan Supabase".';
+    } else {
+      hint = 'Balasan server:\n' + body.slice(0, 200);
+    }
+
+    alert('KONEKSI GAGAL (' + res.status + ')\n\n'
+      + 'Alamat diuji:\n' + endpoint + '\n\n' + hint);
+    console.error('[Tes Koneksi]', res.status, body);
+
+  }catch(err){
+    alert('TIDAK DAPAT TERHUBUNG\n\n'
+      + 'Alamat diuji:\n' + endpoint + '\n\n'
+      + 'Kemungkinan penyebab:\n'
+      + '  · Tidak ada koneksi internet\n'
+      + '  · Project URL salah ketik\n'
+      + '  · Permintaan diblokir browser (CORS)\n\n'
+      + 'Pesan: ' + String(err && err.message || err));
+    console.error('[Tes Koneksi] gagal:', err);

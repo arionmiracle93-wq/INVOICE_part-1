@@ -1,0 +1,159 @@
+  if(!input || !box) return hideProductSuggestions();
+  const matches = matchCatalog(query);
+  if(!matches.length){ hideProductSuggestions(); return; }
+  productSugCtx = {tr:tr, matches:matches};
+  productSugIndex = 0;
+  const rect = input.getBoundingClientRect();
+  const estimatedH = Math.min(190, matches.length * 46 + 10);
+  let top = rect.bottom + 4;
+  if(top + estimatedH > window.innerHeight - 8) top = Math.max(8, rect.top - estimatedH - 4);
+  box.style.left = Math.max(8, rect.left) + 'px';
+  box.style.top = top + 'px';
+  box.style.width = Math.max(rect.width, 230) + 'px';
+  renderProductSuggestions();
+  box.classList.add('open');
+}
+function selectCatalogProduct(tr, item){
+  if(!tr || !item) return hideProductSuggestions();
+  const productInput = tr.querySelector('.produk');
+  if(!productInput) return hideProductSuggestions();
+  const descriptionInput = tr.children[1] ? tr.children[1].querySelector('textarea') : null;
+  const priceInput = tr.querySelector('.harga');
+  productInput.value = item.name;
+  if(item.description && descriptionInput && !descriptionInput.value.trim()) descriptionInput.value = item.description;
+  if(item.harga && priceInput && !priceInput.value.trim()){
+    priceInput.value = String(parseThousands(item.harga) || '');
+    formatHargaInput(priceInput);
+  }
+  setRowTiers(tr, normalizeTiers(item.tiers || ''));
+  hideProductSuggestions();
+  autoGrow(productInput);
+  if(descriptionInput) autoGrow(descriptionInput);
+  recalcRow(tr);
+  productInput.focus();
+  scheduleAutosave();
+}
+document.getElementById('productSuggestBox').addEventListener('click', function(e){
+  const btn = e.target.closest('.product-suggestion');
+  if(!btn || !productSugCtx) return;
+  selectCatalogProduct(productSugCtx.tr, productSugCtx.matches[parseInt(btn.dataset.index, 10)]);
+});
+const rowsTbody = document.getElementById('rows');
+rowsTbody.addEventListener('input', function(e){
+  if(e.target.classList && e.target.classList.contains('produk')){
+    showProductSuggestions(e.target.closest('tr'), e.target.value);
+  }
+});
+rowsTbody.addEventListener('keydown', function(e){
+  const el = e.target;
+  if(!(el.classList && el.classList.contains('produk'))) return;
+  const box = document.getElementById('productSuggestBox');
+  if(!box.classList.contains('open') || !productSugCtx) return;
+  if(e.key === 'ArrowDown'){ e.preventDefault(); productSugIndex = Math.min(productSugIndex + 1, productSugCtx.matches.length - 1); renderProductSuggestions(); }
+  else if(e.key === 'ArrowUp'){ e.preventDefault(); productSugIndex = Math.max(productSugIndex - 1, 0); renderProductSuggestions(); }
+  else if(e.key === 'Enter'){ e.preventDefault(); selectCatalogProduct(productSugCtx.tr, productSugCtx.matches[Math.max(productSugIndex, 0)]); }
+  else if(e.key === 'Escape'){ hideProductSuggestions(); }
+});
+
+/* ---------- Customer autocomplete ---------- */
+const CUST_KEY = 'pp_invoice_customers_v1';
+function readCustomers(){ try{ const raw = localStorage.getItem(CUST_KEY); const items = raw ? JSON.parse(raw) : []; return Array.isArray(items) ? items : []; } catch(err){ return []; } }
+function writeCustomers(items){ try{ localStorage.setItem(CUST_KEY, JSON.stringify(items.slice(0, 200))); }catch(err){} }
+function recordCustomer(name){
+  const trimmed = String(name || '').trim();
+  if(!trimmed || trimmed.length < 2) return;
+  const items = readCustomers();
+  const existing = items.indexOf(trimmed);
+  if(existing >= 0) items.splice(existing, 1);
+  items.unshift(trimmed);
+  writeCustomers(items);
+}
+
+/* Buku nomor WhatsApp pelanggan (terpisah dari daftar nama agar
+   struktur data lama tetap kompatibel). Kunci = nama huruf kecil. */
+const CUST_PHONE_KEY = 'pp_invoice_customer_phones_v1';
+function readCustomerPhones(){
+  try{ const raw = localStorage.getItem(CUST_PHONE_KEY); const o = raw ? JSON.parse(raw) : {}; return (o && typeof o === 'object') ? o : {}; }
+  catch(e){ return {}; }
+}
+function lookupCustomerPhone(name){
+  const k = String(name || '').trim().toLowerCase();
+  if(!k) return '';
+  return readCustomerPhones()[k] || '';
+}
+function saveCustomerPhone(name, phone){
+  const k = String(name || '').trim().toLowerCase();
+  const v = String(phone || '').trim();
+  if(!k || !v) return;
+  try{
+    const map = readCustomerPhones();
+    map[k] = v;
+    /* Batasi agar tidak membengkak */
+    const keys = Object.keys(map);
+    if(keys.length > 300){ keys.slice(0, keys.length - 300).forEach(function(x){ delete map[x]; }); }
+    localStorage.setItem(CUST_PHONE_KEY, JSON.stringify(map));
+  }catch(e){}
+}
+/* Cocokkan nama pelanggan: tidak case sensitive, kosong = tidak tampil,
+   prioritas awalan nama lalu awalan kata lalu mengandung. */
+function matchCustomers(query){
+  const needle = String(query || '').trim().toLowerCase();
+  if(!needle) return [];
+  const customers = readCustomers();
+  if(!customers.length) return [];
+  const starts = [], word = [], contains = [];
+  customers.forEach(function(n){
+    const name = String(n || '');
+    const low = name.toLowerCase();
+    const pos = low.indexOf(needle);
+    if(pos === -1) return;
+    if(pos === 0) starts.push(name);
+    else if(/[\s\-\.,\/(]/.test(low.charAt(pos - 1))) word.push(name);
+    else contains.push(name);
+  });
+  return starts.concat(word, contains).slice(0, 8);
+}
+
+function showCustSuggestions(query){
+  const box = document.getElementById('custSuggestions');
+  const matches = matchCustomers(query);
+  if(!matches.length){ hideCustSuggestions(); return; }
+  box.innerHTML = matches.map(function(name, i){
+    return '<button class="cust-suggestion" type="button">' + escapeHtml(name) + '</button>';
+  }).join('');
+  box.querySelectorAll('.cust-suggestion').forEach(function(btn, i){
+    btn.addEventListener('mousedown', function(e){ e.preventDefault(); });
+    btn.addEventListener('click', function(){
+      document.getElementById('custName').value = matches[i];
+      box.classList.remove('open');
+      autofillCustomerPhone(matches[i]);
+      refreshCustomerBar();
+      scheduleAutosave();
+      document.getElementById('custPhone').focus();
+    });
+  });
+  box.classList.add('open');
+  const rect = document.getElementById('custName').getBoundingClientRect();
+  box.style.position = 'fixed';
+  box.style.left = rect.left + 'px';
+  box.style.top = (rect.bottom + 3) + 'px';
+  box.style.width = Math.max(rect.width, 200) + 'px';
+  /* Input kini berada di dalam modal (z-index 50), jadi dropdown
+     harus di atasnya agar tidak tertutup. */
+  box.style.zIndex = '60';
+}
+function hideCustSuggestions(){
+  const box = document.getElementById('custSuggestions');
+  box.classList.remove('open');
+  box.style.position = ''; box.style.left = ''; box.style.top = '';
+  box.style.width = ''; box.style.zIndex = '';
+}
+
+/* ── Dialog data customer ──────────────────────────────────────
+   Data customer sengaja TIDAK ditampilkan di lembar invoice —
+   sifatnya internal untuk riwayat & penagihan. Pengisiannya
+   lewat jendela terpisah.
+   ───────────────────────────────────────────────────────────── */
+function refreshCustomerBar(){
+  const bar = document.getElementById('custBar');
+  const val = document.getElementById('custBarValue');

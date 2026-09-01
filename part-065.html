@@ -1,0 +1,143 @@
+}
+function closeBillReminder(){
+  document.getElementById('billModal').classList.remove('open');
+  billCtx = null;
+}
+function copyBillMessage(){
+  const txt = document.getElementById('billMessage').value;
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(txt).then(function(){ showToast('Pesan disalin'); })
+      .catch(function(){ showToast('Gagal menyalin', 'error'); });
+  } else {
+    const ta = document.createElement('textarea');
+    ta.value = txt; document.body.appendChild(ta); ta.select();
+    try{ document.execCommand('copy'); showToast('Pesan disalin'); }catch(e){ showToast('Gagal menyalin', 'error'); }
+    document.body.removeChild(ta);
+  }
+}
+function sendBillReminder(){
+  const phone = formatWhatsAppNumber(document.getElementById('billPhone').value);
+  if(!phone || phone.length < 10){
+    showToast('Nomor WhatsApp pelanggan belum valid', 'error');
+    document.getElementById('billPhone').focus();
+    return;
+  }
+  /* Simpan nomor agar tidak perlu diketik ulang lain kali */
+  if(billCtx && billCtx.data && billCtx.data.custName){
+    saveCustomerPhone(billCtx.data.custName, document.getElementById('billPhone').value);
+  }
+  const msg = document.getElementById('billMessage').value;
+  window.open('https://wa.me/' + phone + '?text=' + encodeURIComponent(msg), '_blank', 'noopener');
+  closeBillReminder();
+  showToast('WhatsApp dibuka');
+}
+document.getElementById('billModal').addEventListener('mousedown', function(e){ if(e.target === this) closeBillReminder(); });
+
+function exportHistoryCSV(){
+  const items = readHistory();
+  if(!items.length){ showToast('Belum ada riwayat untuk diekspor', 'error'); return; }
+  const monthInput = document.getElementById('historyMonth');
+  const month = monthInput ? monthInput.value : '';
+  let filtered = items;
+  if(month){
+    filtered = items.filter(function(item){
+      const d = new Date(item.savedAt);
+      if(isNaN(d.getTime())) return false;
+      return d.getFullYear() === parseInt(month.slice(0,4), 10) && (d.getMonth()+1) === parseInt(month.slice(5,7), 10);
+    });
+  }
+  if(!filtered.length){ showToast('Tidak ada data pada bulan tersebut', 'error'); return; }
+  const header = ['No Invoice','Tanggal Invoice','Jatuh Tempo','Customer','No WhatsApp','Metode Bayar','Subtotal','Diskon','PPN','Total','DP','Cicilan','Jml Cicilan','Total Dibayar','Sisa','Status','Keterangan Tempo'];
+  const lines = filtered.map(function(item){
+    const d = item.data || {};
+    const total = d.totalAmount || 0;
+    const p = historyPayable(item);
+    const st = dueStatus(d.invDue || item.invDue, !!d.lunas);
+    return [d.invNo||'', d.invDate||'', d.invDue||'', d.custName||'', d.custPhone||'', d.payMethod||'',
+            d.subtotalAmount||0, d.discountAmount||0, d.taxAmount||0, total,
+            p.dp, p.cicilan, p.count, p.paid, p.base,
+            d.lunas ? 'LUNAS' : (p.paid > 0 ? 'SEBAGIAN' : 'BELUM'), st ? st.label : ''];
+  });
+  const csv = [header].concat(lines).map(function(row){ return row.map(csvEscape).join(';'); }).join('\r\n');
+  downloadBlob(new Blob(['\uFEFF' + csv], {type:'text/csv;charset=utf-8;'}), 'rekap_invoice_' + (month || 'semua') + '.csv');
+  showToast('Rekap ' + (month || 'semua data') + ' berhasil diekspor');
+}
+
+/* ▸ EXPORT PDF ────────────────────────────────────────────────
+   Invoice dikloning ke luar layar dengan lebar tetap 794px (A4),
+   input diubah jadi teks statis, lalu dirender html2canvas.
+   ─────────────────────────────────────────────────────────── */
+
+/* Catatan: sejak v2 proses export TIDAK lagi menyembunyikan elemen pada
+   invoice yang tampil di layar. Sebagai gantinya dibuat KLON di luar layar
+   (buildExportClone) sehingga tampilan kerja tidak pernah terganggu. */
+
+/* Render invoice card ke canvas menggunakan html2canvas */
+/* Ubah <input>/<textarea>/<select> menjadi teks statis.
+   Ini kunci agar tidak ada teks yang terpotong: form control punya
+   tinggi tetap & scroll internal, sedangkan div biasa akan memanjang
+   mengikuti isinya sehingga html2canvas merekam seluruh teks. */
+function freezeFormControls(root){
+  root.querySelectorAll('textarea').forEach(function(ta){
+    const div = document.createElement('div');
+    div.className = 'pdf-text';
+    div.textContent = ta.value || '';
+    ta.parentNode.replaceChild(div, ta);
+  });
+  root.querySelectorAll('input').forEach(function(inp){
+    if(inp.type === 'file' || inp.type === 'hidden'){ inp.remove(); return; }
+    const div = document.createElement('div');
+    div.className = 'pdf-text';
+    if(inp.classList.contains('r-num')) div.classList.add('center');
+    if(inp.classList.contains('harga')) div.classList.add('center');
+    if(inp.id === 'invNo' || inp.id === 'invDate') div.classList.add('pill');
+    if(inp.id === 'custName') div.classList.add('bill');
+    if(inp.id === 'addrLine2' || inp.id === 'emailLine' || inp.id === 'waLine') div.classList.add('contact');
+    if(inp.id === 'discountInput' || inp.id === 'taxInput') div.classList.add('rate');
+    if(inp.id === 'dpInput') div.classList.add('dp');
+    div.textContent = inp.value || '';
+    inp.parentNode.replaceChild(div, inp);
+  });
+  root.querySelectorAll('select').forEach(function(sel){
+    const div = document.createElement('div');
+    div.className = 'pdf-text';
+    div.textContent = sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].text : '';
+    sel.parentNode.replaceChild(div, sel);
+  });
+  /* contenteditable dijadikan statis agar caret/outline tidak ikut terekam */
+  root.querySelectorAll('[contenteditable]').forEach(function(el){
+    el.removeAttribute('contenteditable');
+  });
+}
+
+/* Bangun klon invoice di luar layar dengan lebar A4 tetap */
+function buildExportClone(){
+  const card = document.getElementById('card');
+  const host = document.createElement('div');
+  host.className = 'pdf-export-host';
+
+  const clone = card.cloneNode(true);
+  clone.removeAttribute('id');
+
+  /* PENTING: cloneNode() hanya menyalin ATRIBUT value, bukan properti .value
+     yang diubah lewat JavaScript. Nilai harus disalin manual, dan ini WAJIB
+     dilakukan sebelum elemen apa pun dibuang agar urutan indeks tetap cocok. */
+  const SEL = 'input, textarea, select';
+  const srcFields = card.querySelectorAll(SEL);
+  const dstFields = clone.querySelectorAll(SEL);
+  for(let i = 0; i < srcFields.length && i < dstFields.length; i++){
+    const s = srcFields[i], d = dstFields[i];
+    if(s.tagName === 'SELECT'){ d.selectedIndex = s.selectedIndex; }
+    else { d.value = s.value; }
+  }
+
+  /* Buang elemen interaktif yang tidak perlu dicetak */
+  clone.querySelectorAll('.del-btn, .tier-btn, td.del, .cust-suggestions, .product-suggestions').forEach(function(el){ el.remove(); });
+  /* Kaki tabel (tombol tambah baris & kalkulator) tidak ikut dicetak */
+  const toolbar = clone.querySelector('.table-foot');
+  if(toolbar) toolbar.remove();
+  const emptyBox = clone.querySelector('.table-empty');
+  if(emptyBox) emptyBox.remove();
+  /* Kolom aksi (kosong) pada header tabel — sisakan 6 kolom */
+  const headRow = clone.querySelector('thead tr');
+  if(headRow){

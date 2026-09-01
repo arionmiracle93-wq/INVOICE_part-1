@@ -1,0 +1,198 @@
+  } else {
+    box.innerHTML = '<div class="ph">'
+      + '<svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>'
+      + '<span>Tambah<br>Gambar</span></div>';
+    if(info) info.innerHTML = 'Opsional. Gambar otomatis dikecilkan ke 400&nbsp;px agar hemat penyimpanan.';
+  }
+}
+function handleProductImage(evt){
+  const input = evt.target;
+  const file = input.files && input.files[0];
+  if(!file){ input.value = ''; return; }
+  if(file.size > 8 * 1024 * 1024){
+    input.value = '';
+    showToast('Berkas terlalu besar (maks 8MB)', 'error');
+    return;
+  }
+
+  const done = function(dataUrl, note){
+    pfImage = dataUrl;
+    renderProductThumb();
+    showToast('Gambar siap · ' + formatBytes(dataUrl.length * 2) + (note ? ' · ' + note : ''));
+    /* Dikosongkan SETELAH berkas selesai dibaca, supaya memilih
+       berkas yang sama dua kali tetap memicu perubahan. */
+    input.value = '';
+  };
+
+  /* Berkas kecil (<150 KB) dipakai apa adanya — melewati canvas
+     sepenuhnya. Ini menghilangkan seluruh kemungkinan kegagalan
+     pada tahap pengecilan. */
+  if(file.size < 150 * 1024){
+    const fr = new FileReader();
+    fr.onload = function(e){
+      const url = String(e.target.result || '');
+      if(url.indexOf('data:image') === 0) done(url, 'ukuran asli');
+      else { input.value = ''; showToast('Berkas bukan gambar yang dikenali', 'error'); }
+    };
+    fr.onerror = function(){ input.value = ''; showToast('Gagal membaca berkas', 'error'); };
+    fr.readAsDataURL(file);
+    return;
+  }
+
+  compressImage(file, function(dataUrl){ done(dataUrl); });
+}
+function removeProductImage(){
+  if(!pfImage) return;
+  pfImage = '';
+  renderProductThumb();
+}
+
+function saveProductForm(){
+  const name = document.getElementById('pfName').value.trim();
+  if(!name){ showToast('Nama produk belum diisi', 'error'); document.getElementById('pfName').focus(); return; }
+
+  const items = getCatalog();
+  const lama = (pfIndex >= 0 && items[pfIndex]) ? items[pfIndex] : null;
+
+  const item = {
+    /* id dipertahankan agar perubahan dikenali sebagai baris yang
+       sama oleh PC lain, bukan produk baru */
+    id: (lama && lama.id) ? lama.id : newProductId(),
+    name: name,
+    description: document.getElementById('pfDesc').value.trim(),
+    harga: String(parseThousands(document.getElementById('pfPrice').value) || ''),
+    tiers: document.getElementById('pfTiers').value.trim(),
+    category: document.getElementById('pfCategory').value || '',
+    image: pfImage || '',
+    updatedAt: new Date().toISOString(),
+    deleted: false
+  };
+
+  if(lama) items[pfIndex] = item;
+  else items.unshift(item);
+
+  if(!persistCatalog(items)) return;
+  closeProductForm();
+  renderGallery();
+  /* Sebutkan status gambar agar bila tidak tersimpan langsung
+     ketahuan, bukan baru disadari belakangan */
+  showToast((pfIndex >= 0 ? 'Produk diperbarui' : 'Produk ditambahkan')
+    + (item.image ? ' · dengan gambar' : ' · tanpa gambar'));
+}
+function deleteProductFromForm(){
+  const items = getCatalog();
+  const p = items[pfIndex];
+  if(!p) return;
+  if(!confirm('Hapus "' + p.name + '" dari katalog?\n\nInvoice yang sudah dibuat tidak terpengaruh.')) return;
+  if(syncEnabled()){
+    /* Hapus lunak: baris ditandai, bukan dibuang — supaya
+       penghapusan ikut terkirim ke PC lain. Tanpa ini, PC lain
+       akan mengirimkan produk itu kembali. */
+    p.deleted = true;
+    p.updatedAt = new Date().toISOString();
+    if(!p.id) p.id = newProductId();
+  } else {
+    items.splice(pfIndex, 1);
+  }
+  if(!persistCatalog(items)) return;
+  closeProductForm();
+  renderGallery();
+  showToast('Produk dihapus dari katalog');
+}
+
+/* ▸ SINKRONISASI KATALOG (TAHAP 1) ────────────────────────────
+   Supabase sebagai sumber kebenaran, localStorage tetap dipakai
+   agar aplikasi cepat & tahan internet mati.
+
+   Aturan penyelesaian bentrok: yang paling BARU menang
+   (dibandingkan lewat kolom updatedAt).
+
+   Penghapusan memakai penanda `deleted`, bukan menghapus baris —
+   supaya penghapusan di satu PC ikut terkirim ke PC lain. Baris
+   berpenanda tidak ditampilkan di galeri.
+
+   Catatan: hanya KATALOG PRODUK yang disinkronkan pada tahap ini.
+   Riwayat invoice & pelanggan menyusul di tahap berikutnya.
+   ─────────────────────────────────────────────────────────── */
+const SYNC_TABLE = 'pp_products';
+const SYNC_INTERVAL_MS = 15000;
+let syncTimer = null;
+let syncBusy = false;
+let syncLastAt = null;
+let syncLastPushed = null;   /* jumlah baris terkirim pada sinkronisasi terakhir */
+
+function syncEnabled(){
+  const c = readLS(CLOUD_CFG_KEY) || {};
+  return !!c.syncCatalog && cloudReady();
+}
+function setSyncEnabled(on){
+  const c = readLS(CLOUD_CFG_KEY) || {};
+  c.syncCatalog = !!on;
+  writeLS(CLOUD_CFG_KEY, c);
+  restartSyncTimer();
+}
+
+/* Penanda unik produk. Dibuat sekali lalu ikut tersimpan. */
+function newProductId(){
+  return 'prd-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
+}
+/* Lengkapi produk lama yang belum punya id / updatedAt */
+function ensureProductMeta(items){
+  let changed = false;
+  (items || []).forEach(function(p){
+    if(!p) return;
+    if(!p.id){ p.id = newProductId(); changed = true; }
+    if(!p.updatedAt){ p.updatedAt = new Date(0).toISOString(); changed = true; }
+    if(p.deleted === undefined){ p.deleted = false; changed = true; }
+  });
+  return changed;
+}
+
+/* ---------- Pembungkus REST Supabase ---------- */
+function restHeaders(extra){
+  const c = cloudConfig();
+  return Object.assign({
+    apikey: c.key,
+    Authorization: 'Bearer ' + c.key,
+    'Content-Type': 'application/json'
+  }, extra || {});
+}
+/* Kesalahan dibungkus agar kode status & isi balasan terbawa,
+   sehingga bisa diterjemahkan menjadi pesan yang berguna. */
+function syncError(tahap, status, body){
+  const e = new Error(tahap + ' gagal (' + status + ')');
+  e.status = status;
+  e.body = String(body || '');
+  return e;
+}
+
+/* Terjemahkan kesalahan teknis menjadi langkah yang bisa
+   dikerjakan pengguna. */
+function explainSyncError(err){
+  const body = String(err && err.body || '');
+  const status = err && err.status;
+
+  /* Tabel belum dibuat — penyebab paling sering */
+  if(/PGRST205/i.test(body) || /42P01/i.test(body)
+     || /could not find the table/i.test(body) || /does not exist/i.test(body)){
+    return {
+      judul: 'TABEL BELUM DIBUAT',
+      pesan: 'Tabel "' + SYNC_TABLE + '" belum ada di Supabase.\n\n'
+        + 'Ini langkah yang terlewat, bukan kesalahan aplikasi.',
+      aksi: 'sql'
+    };
+  }
+  /* Permintaan nyasar ke alamat yang salah */
+  if(/PGRST125/i.test(body) || /invalid path/i.test(body)){
+    return {
+      judul: 'ALAMAT TIDAK VALID',
+      pesan: 'Project URL kemungkinan mengandung path tambahan.\n\n'
+        + 'Isi hanya bentuk dasarnya:\n'
+        + '    https://xxxxxxxx.supabase.co\n\n'
+        + 'Lalu klik "Simpan Koneksi".',
+      aksi: null
+    };
+  }
+  /* Izin ditolak */
+  if(status === 401 || status === 403 || /permission denied|row-level security|violates row-level/i.test(body)){
+    const k = String((readLS(CLOUD_CFG_KEY) || {}).key || '');

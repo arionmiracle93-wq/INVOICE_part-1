@@ -1,0 +1,128 @@
+  {name:'Spanduk Flexi Korea 340gr', description:'Outdoor heavy duty - per m2', harga:'32000', tiers:'basis=m2;10=29000;30=26000'},
+  {name:'Stiker Vinyl Glossy', description:'Cetak + laminasi doff - per m2', harga:'55000', tiers:'basis=m2;3=52000;10=48000'},
+  {name:'Cutting Sticker Oracal', description:'Warna solid - per m2', harga:'95000', tiers:'basis=m2;2=88000;5=80000'},
+  {name:'Backdrop Flexi 440gr', description:'Indoor/outdoor - per m2', harga:'40000', tiers:'mode=progresif;basis=m2;6=36000;20=32000'},
+  {name:'One Way Vision Kaca', description:'Per m2 - include pasang', harga:'85000', tiers:'mode=progresif;basis=m2;4=78000;15=70000'},
+  {name:'Sticker Label Bulat 4cm', description:'1 lembar isi 24 pcs', harga:'5000', tiers:''},
+  {name:'Fotocopy A4 70gr', description:'Hitam putih 1 sisi', harga:'350', tiers:'100=300;500=250;1000=200'},
+  {name:'Jilid Spiral Kawat', description:'Maksimal 100 lembar', harga:'15000', tiers:''},
+  {name:'Laminating A4 Panas', description:'Plastik 100 micron', harga:'6000', tiers:'10=5000;50=4000'},
+  {name:'Print Foto 4R Glossy', description:'Kertas foto premium', harga:'3500', tiers:'20=3000;100=2500;500=2000'}
+];
+function downloadSampleCatalogCSV(){
+  const lines = [['Nama Produk','Keterangan','Harga','Harga Bertingkat'].map(csvEscape).join(';')];
+  SAMPLE_CATALOG.forEach(function(item){
+    lines.push([csvEscape(item.name), csvEscape(item.description), csvEscape(item.harga), csvEscape(item.tiers)].join(';'));
+  });
+  downloadBlob(new Blob(['\uFEFF' + lines.join('\r\n')], {type:'text/csv;charset=utf-8;'}), 'contoh_katalog_harga_bertingkat.csv');
+  showToast('Contoh CSV (' + SAMPLE_CATALOG.length + ' produk) diunduh');
+}
+function loadSampleCatalog(){
+  const extra = catalogDraft.length ? ' Isi katalog saat ini (' + catalogDraft.length + ' produk) akan diganti.' : '';
+  if(!confirm('Muat ' + SAMPLE_CATALOG.length + ' produk contoh?' + extra + '\n\nBelum tersimpan sampai Anda klik Simpan Pengaturan.')) return;
+  setCatalogDraft(JSON.parse(JSON.stringify(SAMPLE_CATALOG)));
+  showToast(SAMPLE_CATALOG.length + ' produk contoh dimuat. Klik Simpan Pengaturan.');
+}
+
+function detectCsvDelimiter(text){
+  const firstLine = String(text).split(/\r?\n/).find(function(l){ return l.trim(); });
+  if(!firstLine) return ';';
+  const semicolons = (firstLine.match(/;/g) || []).length;
+  const commas = (firstLine.match(/,/g) || []).length;
+  return semicolons >= commas ? ';' : ',';
+}
+
+function parseCSV(text, delim){
+  const rows = []; let row = [], field = '', inQuotes = false;
+  for(let i = 0; i < text.length; i++){
+    const c = text.charAt(i);
+    if(inQuotes){ if(c === '"' && text.charAt(i+1) === '"'){ field += '"'; i++; } else if(c === '"'){ inQuotes = false; } else { field += c; } }
+    else { if(c === '"'){ inQuotes = true; } else if(c === delim){ row.push(field); field = ''; } else if(c === '\n' || c === '\r'){ if(c === '\r' && text.charAt(i+1) === '\n') i++; row.push(field); field = ''; rows.push(row); row = []; } else { field += c; } }
+  }
+  if(field || row.length){ row.push(field); rows.push(row); }
+  return rows;
+}
+function importCatalogCSV(evt){
+  const file = evt.target.files[0];
+  evt.target.value = '';
+  if(!file) return;
+  if(file.size > 1024 * 1024){ showToast('File CSV terlalu besar (maks 1MB)', 'error'); return; }
+  const reader = new FileReader();
+  reader.onload = function(e){
+    const text = String(e.target.result).replace(/^\uFEFF/, '');
+    const rows = parseCSV(text, detectCsvDelimiter(text));
+    if(!rows.length){ showToast('File CSV kosong atau tidak valid', 'error'); return; }
+    const items = [];
+    rows.forEach(function(r, idx){
+      if(idx === 0 && /nama/i.test(String(r[0] || ''))) return;
+      const name = String(r[0] || '').trim();
+      if(!name) return;
+      items.push({name:name, description:String(r[1]||'').trim(), harga:String(r[2]||'').trim(),
+                  tiers:String(r[3]||'').trim(), category:String(r[4]||'').trim(), image:''});
+    });
+    if(!items.length){ showToast('Tidak ada baris produk valid di CSV', 'error'); return; }
+    /* Tawarkan gabung bila katalog sudah berisi */
+    if(catalogDraft.length){
+      const merge = confirm('Ditemukan ' + items.length + ' produk di CSV.\n\nOK = Gabungkan dengan ' + catalogDraft.length + ' produk yang ada\nBatal = Ganti seluruh katalog');
+      setCatalogDraft(merge ? mergeCatalog(catalogDraft, items) : items);
+      showToast(merge ? 'Katalog digabung menjadi ' + catalogDraft.length + ' produk. Klik Simpan.'
+                      : items.length + ' produk menggantikan katalog. Klik Simpan.');
+    } else {
+      setCatalogDraft(items);
+      showToast(items.length + ' produk diimpor. Klik Simpan Pengaturan.');
+    }
+  };
+  reader.readAsText(file, 'utf-8');
+}
+
+/* ▸ AUTOCOMPLETE ──────────────────────────────────────────── */
+let productSugIndex = -1;
+let productSugCtx = null;
+function getCatalog(){
+  if(productCatalog && productCatalog.length) return productCatalog;
+  try{ const s = readStoredSettings(); if(s && Array.isArray(s.catalog)) productCatalog = s.catalog.filter(function(i){ return i && i.name; }); }catch(err){}
+  return productCatalog || [];
+}
+function hideProductSuggestions(){ const box = document.getElementById('productSuggestBox'); if(box) box.classList.remove('open'); productSugIndex = -1; productSugCtx = null; }
+function renderProductSuggestions(){
+  const box = document.getElementById('productSuggestBox');
+  if(!box || !productSugCtx) return;
+  const matches = productSugCtx.matches;
+  if(productSugIndex >= matches.length) productSugIndex = matches.length - 1;
+  box.innerHTML = matches.map(function(item, i){
+    const meta = [item.description || '', item.harga ? 'Rp ' + item.harga : '', item.tiers ? 'bertingkat' : ''].filter(Boolean).join(' | ');
+    return '<button class="product-suggestion' + (i === productSugIndex ? ' hl' : '') + '" data-index="' + i + '" type="button">'
+      + escapeHtml(item.name) + (meta ? '<small>' + escapeHtml(meta) + '</small>' : '') + '</button>';
+  }).join('');
+}
+/* Cari kandidat katalog yang benar-benar cocok dengan ketikan.
+   - Tidak case sensitive.
+   - Tidak menampilkan apa pun bila input masih kosong.
+   - Urutan: awalan kata pertama > awalan kata mana pun > mengandung. */
+function matchCatalog(query){
+  const needle = String(query || '').trim().toLowerCase();
+  if(!needle) return [];
+  const catalog = activeCatalog();
+  if(!catalog.length) return [];
+
+  const starts = [], word = [], contains = [];
+  catalog.forEach(function(item){
+    const name = String(item.name || '').toLowerCase();
+    if(!name) return;
+    const pos = name.indexOf(needle);
+    if(pos === -1){
+      /* Cocokkan juga lewat keterangan agar pencarian tetap membantu */
+      const desc = String(item.description || '').toLowerCase();
+      if(desc && desc.indexOf(needle) !== -1) contains.push(item);
+      return;
+    }
+    if(pos === 0) starts.push(item);
+    else if(/[\s\-\/(]/.test(name.charAt(pos - 1))) word.push(item);
+    else contains.push(item);
+  });
+  return starts.concat(word, contains).slice(0, 8);
+}
+
+function showProductSuggestions(tr, query){
+  const input = tr ? tr.querySelector('.produk') : null;
+  const box = document.getElementById('productSuggestBox');

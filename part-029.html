@@ -1,0 +1,106 @@
+.backup-note{font-size:11.5px;line-height:1.6;color:var(--ink);padding:11px 13px;border-radius:10px;background:var(--teal-pale);border:1px solid rgba(7,157,143,.16)}
+.backup-note b{font-weight:850}
+.backup-note.warn{background:#fff5f5;border-color:rgba(239,61,67,.25);color:#8d2226}
+.backup-actions{display:flex;gap:8px;flex-wrap:wrap}
+.backup-actions .modal-btn{flex:1;min-width:150px;display:flex;align-items:center;justify-content:center;gap:8px}
+.backup-actions .modal-btn svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.backup-meta{font-size:11px;color:var(--muted);text-align:center}
+.backup-drop{border:1.5px dashed rgba(17,47,82,.2);border-radius:11px;padding:18px 14px;text-align:center;cursor:pointer;transition:all .18s ease;background:rgba(17,47,82,.02)}
+.backup-drop:hover,.backup-drop.dragover{border-color:var(--teal);background:rgba(7,157,143,.06)}
+.backup-drop .bd-icon{width:30px;height:30px;margin:0 auto 8px;color:var(--teal);display:block;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.backup-drop .bd-title{font-size:13px;font-weight:800;color:var(--navy)}
+.backup-drop .bd-sub{font-size:11px;color:var(--muted);margin-top:3px}
+.restore-preview{display:none;flex-direction:column;gap:10px;padding:13px;border-radius:11px;border:1px solid rgba(7,157,143,.28);background:rgba(7,157,143,.05)}
+.restore-preview.visible{display:flex}
+.restore-file{font-size:12px;font-weight:800;color:var(--navy);word-break:break-all}
+.restore-date{font-size:11px;color:var(--muted);margin-top:2px}
+.backup-mode{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px;padding:4px;border-radius:9px;background:rgba(17,47,82,.08)}
+.backup-mode button{border:none;cursor:pointer;padding:9px 6px;border-radius:7px;background:transparent;color:var(--ink);font:inherit;font-size:11.5px;font-weight:800;transition:background .18s ease,color .18s ease,box-shadow .18s ease}
+.backup-mode button:hover{background:rgba(255,255,255,.6)}
+.backup-mode button.active{background:#fff;color:var(--teal);box-shadow:0 3px 8px rgba(17,47,82,.14)}
+.backup-mode-desc{font-size:11px;line-height:1.55;color:var(--muted)}
+.backup-divider{height:1px;background:#e9eff0;margin:2px 0}
+body.theme-dark .backup-stat,body.theme-glass .backup-stat{background:rgba(255,255,255,.045);border-color:rgba(255,255,255,.1)}
+body.theme-dark .backup-stat .num,body.theme-glass .backup-stat .num{color:#3ee0c9}
+body.theme-dark .backup-stat .lbl,body.theme-glass .backup-stat .lbl{color:#8fa9a6}
+body.theme-dark .backup-note,body.theme-glass .backup-note{background:rgba(46,207,186,.12);border-color:rgba(46,207,186,.28);color:#cfe6e3}
+body.theme-dark .backup-note.warn,body.theme-glass .backup-note.warn{background:rgba(239,61,67,.14);border-color:rgba(239,61,67,.35);color:#ffb3b6}
+body.theme-dark .backup-section-title,body.theme-glass .backup-section-title{color:#3ee0c9}
+body.theme-dark .backup-drop,body.theme-glass .backup-drop{background:rgba(255,255,255,.035);border-color:rgba(255,255,255,.16)}
+body.theme-dark .backup-drop:hover,body.theme-dark .backup-drop.dragover,body.theme-glass .backup-drop:hover,body.theme-glass .backup-drop.dragover{background:rgba(46,207,186,.1);border-color:rgba(46,207,186,.5)}
+body.theme-dark .backup-drop .bd-title,body.theme-glass .backup-drop .bd-title{color:#eef5f4}
+body.theme-dark .backup-drop .bd-sub,body.theme-glass .backup-drop .bd-sub{color:#8fa9a6}
+body.theme-dark .backup-drop .bd-icon,body.theme-glass .backup-drop .bd-icon{color:#3ee0c9}
+body.theme-dark .restore-preview,body.theme-glass .restore-preview{background:rgba(46,207,186,.09);border-color:rgba(46,207,186,.3)}
+body.theme-dark .restore-file,body.theme-glass .restore-file{color:#eef5f4}
+body.theme-dark .restore-date,body.theme-glass .restore-date{color:#8fa9a6}
+body.theme-dark .backup-mode,body.theme-glass .backup-mode{background:rgba(255,255,255,.08)}
+body.theme-dark .backup-mode button,body.theme-glass .backup-mode button{color:#c3d6d3}
+body.theme-dark .backup-mode button.active,body.theme-glass .backup-mode button.active{background:rgba(46,207,186,.22);color:#3ee0c9;box-shadow:inset 0 0 0 1px rgba(46,207,186,.5)}
+body.theme-dark .backup-mode-desc,body.theme-glass .backup-mode-desc{color:#8fa9a6}
+body.theme-dark .backup-meta,body.theme-glass .backup-meta{color:#8fa9a6}
+body.theme-dark .backup-divider,body.theme-glass .backup-divider{background:rgba(255,255,255,.08)}
+@media (max-width:620px){ .backup-stats{grid-template-columns:repeat(2,minmax(0,1fr))} }
+
+/* ENHANCED: Export progress overlay */
+.export-overlay{position:fixed;inset:0;z-index:95;display:none;align-items:center;justify-content:center;background:rgba(9,36,54,.5);backdrop-filter:blur(8px)}
+.export-overlay.active{display:flex}
+.export-modal{background:#fff;border-radius:16px;padding:28px 36px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.3);max-width:340px;width:90%}
+.export-modal h3{margin:0 0 8px;font-size:16px;font-weight:800;color:var(--navy)}
+.export-modal p{margin:0 0 16px;font-size:13px;color:var(--muted)}
+.export-spinner{width:36px;height:36px;border:3px solid #e0e7e8;border-top-color:var(--teal);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 16px}
+@keyframes spin{to{transform:rotate(360deg)}}
+body.theme-dark .export-modal{background:#0e2625;border:1px solid rgba(255,255,255,.12)}
+body.theme-dark .export-modal h3{color:#eef5f4}
+body.theme-dark .export-modal p{color:#94adaa}
+body.theme-dark .export-spinner{border-color:rgba(255,255,255,.15);border-top-color:#2ecfba}
+body.theme-glass .export-modal{background:rgba(8,27,30,.95);border:1px solid rgba(255,255,255,.15);backdrop-filter:blur(20px)}
+body.theme-glass .export-modal h3{color:#f3fbfa}
+body.theme-glass .export-modal p{color:#a7c6c2}
+body.theme-glass .export-spinner{border-color:rgba(255,255,255,.15);border-top-color:#3ee0c9}
+</style>
+
+<script id="pp-helper">
+/* Ditambahkan oleh lapisan revisi. Aman: hanya membaca, tidak mengubah data. */
+window.ppAktif = function (list) {
+  if (!Array.isArray(list)) return [];
+  return list.filter(function (p) { return p && !p.deleted; });
+};
+/* Jumlah produk aktif — dipakai galeri, chip kategori, dan Backup. */
+window.ppJml = function (list) { return window.ppAktif(list).length; };
+/* Jumlah 'nisan' (produk terhapus yang sengaja disimpan untuk sinkronisasi) */
+window.ppNisan = function (list) {
+  return (Array.isArray(list) ? list.length : 0) - window.ppJml(list);
+};
+</script>
+
+<style id="pp-revisi">
+/* ▸ PATCH 001 — "M2 BAHAN" → angka 2 sebagai superscript (meter persegi)
+   Sebab: .th-m2 memakai layout flex agar tombol kalkulator sejajar, sehingga
+   <sup> menjadi flex item dan vertical-align:super tidak berlaku lagi.
+   Solusi: bungkus seluruh label dalam .m2-label (satu item, inline di dalam).
+   Tidak ada id/class lama yang diubah atau dihapus. */
+.th-m2 .m2-label{
+  display:inline-block; white-space:nowrap; line-height:inherit;
+  font:inherit; letter-spacing:inherit;
+}
+.th-m2 .m2-label sup{
+  font-size:.62em; line-height:0; vertical-align:super;
+  margin:0; padding:0; font-weight:inherit; letter-spacing:0;
+}
+/* Jaring pengaman bila <sup> tetap jadi anak langsung flex container */
+.th-m2 > sup{ align-self:flex-start; font-size:.62em; line-height:1.1; }
+
+/* Cetak & PDF — spesifisitas sengaja dinaikkan (catatan jebakan 4.3) */
+body.printing .th-m2 .m2-label sup,
+body.printing.theme-dark .th-m2 .m2-label sup,
+body.printing.theme-glass .th-m2 .m2-label sup,
+.pdf-export-host .th-m2 .m2-label sup{
+  font-size:.62em !important; line-height:0 !important;
+  vertical-align:super !important;
+}
+@media print{
+  .th-m2 .m2-label{display:inline-block !important; white-space:nowrap !important}
+  .th-m2 .m2-label sup{font-size:.62em !important; line-height:0 !important;
+    vertical-align:super !important}
+}

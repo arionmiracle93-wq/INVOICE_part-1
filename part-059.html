@@ -1,0 +1,142 @@
+  try{ renderDueFlag(); }catch(e){}
+  scheduleAutosave();
+}
+function setStampPosition(leftPct, topPct){
+  const stamp = document.getElementById('lunasStamp');
+  stamp.style.left = leftPct + '%'; stamp.style.top = topPct + '%'; stamp.style.right = 'auto';
+  stamp.dataset.leftPct = leftPct; stamp.dataset.topPct = topPct;
+}
+
+/* Lunas drag */
+(function initLunasDrag(){
+  const stamp = document.getElementById('lunasStamp');
+  const card = document.getElementById('card');
+  let dragging = false, startX = 0, startY = 0, startLeft = 0, startTop = 0;
+  stamp.addEventListener('pointerdown', function(e){
+    if(!stamp.classList.contains('active')) return;
+    dragging = true; stamp.classList.add('dragging');
+    const cardRect = card.getBoundingClientRect(), stampRect = stamp.getBoundingClientRect();
+    startLeft = stampRect.left - cardRect.left; startTop = stampRect.top - cardRect.top;
+    startX = e.clientX; startY = e.clientY;
+    stamp.style.right = 'auto'; stamp.style.left = startLeft + 'px'; stamp.style.top = startTop + 'px';
+    stamp.setPointerCapture(e.pointerId); e.preventDefault();
+  });
+  stamp.addEventListener('pointermove', function(e){
+    if(!dragging) return;
+    const cardRect = card.getBoundingClientRect(), stampRect = stamp.getBoundingClientRect();
+    let newLeft = Math.max(0, Math.min(startLeft + (e.clientX - startX), cardRect.width - stampRect.width));
+    let newTop = Math.max(0, Math.min(startTop + (e.clientY - startY), cardRect.height - stampRect.height));
+    stamp.style.left = newLeft + 'px'; stamp.style.top = newTop + 'px';
+  });
+  function endDrag(){
+    if(!dragging) return;
+    dragging = false; stamp.classList.remove('dragging');
+    const cardRect = card.getBoundingClientRect();
+    setStampPosition(((parseFloat(stamp.style.left) / cardRect.width) * 100).toFixed(2), ((parseFloat(stamp.style.top) / cardRect.height) * 100).toFixed(2));
+    scheduleAutosave();
+  }
+  stamp.addEventListener('pointerup', endDrag);
+  stamp.addEventListener('pointercancel', endDrag);
+})();
+
+/* ▸ NAVIGASI KEYBOARD ─────────────────────────────────────── */
+function focusCell(tr, colIndex, cursorPos){
+  if(!tr) return false;
+  const td = tr.children[colIndex];
+  if(!td) return false;
+  const input = td.querySelector('input, textarea');
+  if(!input) return false;
+  input.focus();
+  if(typeof input.setSelectionRange === 'function'){
+    const pos = cursorPos === 'start' ? 0 : input.value.length;
+    try{ input.setSelectionRange(pos, pos); }catch(e){}
+  }
+  return true;
+}
+document.getElementById('rows').addEventListener('keydown', function(e){
+  const el = e.target;
+  if(el.tagName !== 'INPUT' && el.tagName !== 'TEXTAREA') return;
+  if(el.classList && el.classList.contains('produk') && document.getElementById('productSuggestBox').classList.contains('open')) return;
+  const td = el.closest('td'); const tr = td.closest('tr');
+  const cellIndex = Array.prototype.indexOf.call(tr.children, td);
+  if(e.key === 'ArrowUp'){ e.preventDefault(); focusCell(tr.previousElementSibling, cellIndex, 'end'); }
+  else if(e.key === 'ArrowDown'){
+    e.preventDefault();
+    if(tr.nextElementSibling) focusCell(tr.nextElementSibling, cellIndex, 'end');
+    else { addRow(); focusCell(document.getElementById('rows').lastElementChild, cellIndex, 'end'); }
+  } else if(e.key === 'ArrowLeft'){
+    if(el.selectionStart === 0 && el.selectionEnd === 0){
+      let idx = cellIndex - 1;
+      while(idx >= 0 && !tr.children[idx].querySelector('input, textarea')) idx--;
+      if(idx >= 0){ e.preventDefault(); focusCell(tr, idx, 'end'); }
+    }
+  } else if(e.key === 'ArrowRight'){
+    if(el.selectionStart === el.value.length && el.selectionEnd === el.value.length){
+      let idx = cellIndex + 1;
+      while(idx < tr.children.length && !tr.children[idx].querySelector('input, textarea')) idx++;
+      if(idx < tr.children.length){ e.preventDefault(); focusCell(tr, idx, 'start'); }
+    }
+  }
+});
+
+/* ▸ NOMOR INVOICE ─────────────────────────────────────────── */
+function readSequence(){ try{ const raw = localStorage.getItem(SEQUENCE_KEY); return raw ? JSON.parse(raw) : {}; }catch(err){ return {}; } }
+/* Nomor urut WAJIB tersimpan. Bila gagal diam-diam, invoice
+   berikutnya bisa memakai nomor yang sama — dan itu berbahaya
+   untuk pembukuan. Karena itu kegagalannya diberitahukan. */
+function writeSequence(seq){
+  try{ localStorage.setItem(SEQUENCE_KEY, JSON.stringify(seq)); return true; }
+  catch(err){
+    console.error('Gagal menyimpan nomor urut invoice:', err);
+    try{ showToast('Nomor urut invoice gagal disimpan — penyimpanan penuh. Periksa nomor invoice berikutnya.', 'error'); }catch(e){}
+    return false;
+  }
+}
+function todayKey(){ const n = new Date(); return '' + n.getFullYear() + String(n.getMonth()+1).padStart(2,'0') + String(n.getDate()).padStart(2,'0'); }
+function nextInvoiceNumber(reserve){
+  const seq = readSequence(); const key = todayKey();
+  const next = (parseInt(seq[key], 10) || 0) + 1;
+  if(reserve){ seq[key] = next; writeSequence(seq); }
+  /* Kode perangkat mencegah nomor kembar saat dipakai di beberapa device */
+  let code = '';
+  try{ code = (getDevice().code || ''); }catch(e){}
+  return 'INV-' + key + '-' + code + String(next).padStart(3,'0');
+}
+function syncInvoiceSequence(invoiceNo){
+  /* Terima format lama (INV-20260829-005) & baru (INV-20260829-A005) */
+  const match = String(invoiceNo || '').match(/^INV-(\d{8})-([A-Z0-9]{0,3}?)(\d+)$/i);
+  if(!match) return;
+  const seq = readSequence();
+  const number = parseInt(match[3], 10) || 0;
+  if(number > (parseInt(seq[match[1]], 10) || 0)){ seq[match[1]] = number; writeSequence(seq); }
+}
+function setDefaultMeta(reserve){
+  const now = new Date();
+  document.getElementById('invDate').value = fmtDateID(now);
+  document.getElementById('invNo').value = nextInvoiceNumber(!!reserve);
+  applyDefaultDue(now);
+}
+function sanitizeFilename(s){ return (s || 'invoice').trim().replace(/[^a-z0-9\-_]+/gi, '_').replace(/^_+|_+$/g,'') || 'invoice'; }
+
+/* ▸ JATUH TEMPO ───────────────────────────────────────────────
+   Format tanggal yang dipakai aplikasi: "dd - mm - yyyy".
+   Parser dibuat toleran agar invoice lama / ketikan manual
+   dengan pemisah lain tetap terbaca.
+   ─────────────────────────────────────────────────────────── */
+function fmtDateID(d){
+  const p = function(v){ return String(v).padStart(2, '0'); };
+  return p(d.getDate()) + ' - ' + p(d.getMonth() + 1) + ' - ' + d.getFullYear();
+}
+function parseDateID(str){
+  const s = String(str || '').trim();
+  if(!s) return null;
+  /* dd-mm-yyyy dengan pemisah - / . atau spasi */
+  const m = s.match(/^(\d{1,2})\s*[-\/.\s]\s*(\d{1,2})\s*[-\/.\s]\s*(\d{4})$/);
+  if(m){
+    const d = new Date(parseInt(m[3],10), parseInt(m[2],10) - 1, parseInt(m[1],10));
+    return isNaN(d.getTime()) ? null : d;
+  }
+  /* yyyy-mm-dd */
+  const iso = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if(iso){
+    const d = new Date(parseInt(iso[1],10), parseInt(iso[2],10) - 1, parseInt(iso[3],10));

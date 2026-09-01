@@ -1,0 +1,164 @@
+  const st = cloudState();
+  if(st.lastError){
+    setCloudStatus('err', 'Backup gagal');
+  } else {
+    setCloudStatus('ok', c.auto ? 'Backup otomatis aktif' : 'Backup manual');
+  }
+  refreshCloudLastInfo();
+  restartCloudTimer();
+  /* Sinkronisasi katalog */
+  try{
+    refreshSyncUI();
+    restartSyncTimer();
+    if(syncEnabled()) setTimeout(function(){ syncCatalogNow(true); }, 2000);
+  }catch(e){ console.error('initCloud/sync:', e); }
+}
+
+/* ---------- Drag & drop file backup ---------- */
+(function initBackupDrop(){
+  const drop = document.getElementById('backupDrop');
+  if(!drop) return;
+  ['dragenter','dragover'].forEach(function(ev){
+    drop.addEventListener(ev, function(e){ e.preventDefault(); e.stopPropagation(); drop.classList.add('dragover'); });
+  });
+  ['dragleave','drop'].forEach(function(ev){
+    drop.addEventListener(ev, function(e){ e.preventDefault(); e.stopPropagation(); drop.classList.remove('dragover'); });
+  });
+  drop.addEventListener('drop', function(e){
+    const file = e.dataTransfer && e.dataTransfer.files ? e.dataTransfer.files[0] : null;
+    readBackupFile(file);
+  });
+})();
+
+document.getElementById('backupModal').addEventListener('mousedown', function(e){ if(e.target === this) closeBackup(); });
+
+/* ▸ INISIALISASI ──────────────────────────────────────────── */
+renderLogos();          /* tampilkan logo bawaan sebelum settings dimuat */
+loadTheme();
+loadSettings();
+refreshTierSegs();
+const savedDraft = readDraft();
+if(savedDraft && confirm('Draft invoice otomatis ditemukan. Muat kembali draft terakhir?')){
+  applyInvoiceData(savedDraft);
+  setAutosaveStatus('Draft terakhir dipulihkan');
+}else{
+  if(savedDraft) clearDraft();
+  setDefaultMeta(true);
+  addRow();
+  recalcTotal();
+  scheduleAutosave();
+}
+
+/* Jaring pengaman terakhir setelah semua inisialisasi */
+if(!document.querySelectorAll('#rows tr').length) addRow();
+ensureTableToolbarVisible();
+try{ initCloud(); }catch(e){}
+try{ renderPaymentPanel(); }catch(e){}
+try{ renderDueFlag(); }catch(e){}
+try{ onCustPhoneInput(); }catch(e){}
+try{ refreshCustomerBar(); }catch(e){}
+try{ refreshTableFoot(); }catch(e){}
+/* Periksa sisa ruang penyimpanan sejak awal, beri jeda agar tidak
+   menumpuk dengan dialog pemulihan draft */
+setTimeout(function(){ try{ checkStorageHealth(); }catch(e){} }, 1200);
+/* Nomor invoice berubah -> kode unik & QRIS ikut diperbarui */
+document.getElementById('invNo').addEventListener('input', function(){ renderPaymentPanel(); });
+/* Tanggal invoice diubah manual -> hitung ulang tanggal tempo */
+document.getElementById('invDate').addEventListener('change', function(){
+  const base = parseDateID(this.value);
+  if(base) applyDefaultDue(base);
+});
+
+/* Cetak lewat Ctrl+P / menu browser tetap memakai template tema Light */
+window.addEventListener('beforeprint', function(){
+  closeTierEditor();
+  closeM2Calc();
+  hideProductSuggestions();
+  hideCustSuggestions();
+  document.body.classList.add('printing');
+});
+window.addEventListener('afterprint', function(){
+  document.body.classList.remove('printing');
+  ensureTableToolbarVisible();
+});
+</script>
+
+<script id="pp-fitur-toggle">
+(function(){
+  var KEY = 'pp_fitur_tombol_v1';
+  /* Bawaan: kedua tombol DISEMBUNYIKAN sesuai permintaan pemilik. */
+  function baca(){
+    try { return JSON.parse(localStorage.getItem(KEY)) || {}; }
+    catch(e){ return {}; }
+  }
+  function simpan(o){ try{ localStorage.setItem(KEY, JSON.stringify(o)); }catch(e){} }
+  function aktif(nama){ var o = baca(); return o[nama] === true; }
+
+  /* Cari tombol berdasarkan fungsi yang dipanggil ATAU tulisannya,
+     supaya tetap ketemu walau penamaan berubah. */
+  function cari(polaFungsi, polaTeks){
+    var hasil = [];
+    var semua = document.querySelectorAll('button, a');
+    Array.prototype.forEach.call(semua, function(b){
+      if (b.closest && b.closest('#ppBootBar')) return;   /* jangan sentuh toolbar boot */
+      var on = (b.getAttribute && b.getAttribute('onclick')) || '';
+      var tx = (b.textContent || '').trim().toLowerCase();
+      if (polaFungsi.test(on) || polaTeks.test(tx)) hasil.push(b);
+    });
+    return hasil;
+  }
+
+  function terapkan(){
+    cari(/pdf/i, /^unduh pdf$/).forEach(function(b){
+      b.style.display = aktif('pdf') ? '' : 'none';
+    });
+    cari(/sendWhatsApp/i, /^kirim whatsapp$/).forEach(function(b){
+      b.style.display = aktif('wa') ? '' : 'none';
+    });
+  }
+
+  /* Sakelar di Pengaturan → Dokumen, mengikuti pola pengaturan lain. */
+  function pasangSakelar(){
+    var panel = document.querySelector('[data-panel="dokumen"]');
+    if(!panel || document.getElementById('ppFiturBox')) return;
+    var box = document.createElement('div');
+    box.id = 'ppFiturBox';
+    box.className = 'field';
+    box.style.cssText = 'margin-top:14px;padding-top:14px;border-top:1px solid rgba(128,128,128,.25)';
+    box.innerHTML =
+      '<div style="font-weight:700;font-size:12px;margin-bottom:8px">Tombol Kirim Dokumen</div>' +
+      '<label style="display:flex;gap:8px;align-items:flex-start;cursor:pointer;margin-bottom:8px;font-size:12px">' +
+        '<input type="checkbox" id="ppSwPdf" style="margin-top:2px">' +
+        '<span>Tampilkan tombol <b>Unduh PDF</b><br>' +
+        '<span style="opacity:.7;font-size:11px">Mati secara bawaan. Fitur Cetak Dokumen sudah bisa menyimpan PDF lewat pilihan printer &ldquo;Save as PDF&rdquo;.</span></span>' +
+      '</label>' +
+      '<label style="display:flex;gap:8px;align-items:flex-start;cursor:pointer;font-size:12px">' +
+        '<input type="checkbox" id="ppSwWa" style="margin-top:2px">' +
+        '<span>Tampilkan tombol <b>Kirim WhatsApp</b><br>' +
+        '<span style="opacity:.7;font-size:11px">Mati secara bawaan. Penagihan WhatsApp di menu Riwayat tetap berjalan seperti biasa.</span></span>' +
+      '</label>';
+    panel.appendChild(box);
+    var p = document.getElementById('ppSwPdf'), w = document.getElementById('ppSwWa');
+    p.checked = aktif('pdf'); w.checked = aktif('wa');
+    function ubah(){
+      simpan({ pdf: p.checked, wa: w.checked });
+      terapkan();
+      try { showToast('Pengaturan tombol disimpan'); } catch(e){}
+    }
+    p.addEventListener('change', ubah);
+    w.addEventListener('change', ubah);
+  }
+
+  function jalan(){ terapkan(); pasangSakelar(); }
+  jalan();
+  setTimeout(jalan, 400);
+  setTimeout(jalan, 1500);
+  /* Tombol bisa dibuat ulang saat modal dibuka — pantau perubahan halaman. */
+  try {
+    new MutationObserver(function(){ terapkan(); pasangSakelar(); })
+      .observe(document.body, { childList:true, subtree:true });
+  } catch(e){}
+})();
+</script>
+</body>
+</html>

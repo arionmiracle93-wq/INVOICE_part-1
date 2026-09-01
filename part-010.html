@@ -1,0 +1,86 @@
+.field .file-input-wrapper:hover{background:rgba(7,157,143,.06);border-color:var(--teal)}
+.field .file-input-wrapper .file-btn{padding:8px 16px;border-radius:8px;background:linear-gradient(135deg, var(--teal), #10aa9d);color:#fff;font-size:12px;font-weight:700;white-space:nowrap;box-shadow:0 4px 12px rgba(7,157,143,.25);transition:transform .15s ease, box-shadow .15s ease}
+.field .file-input-wrapper:hover .file-btn{transform:translateY(-1px);box-shadow:0 6px 16px rgba(7,157,143,.35)}
+.field .file-input-wrapper .file-name{font-size:12px;color:var(--muted);font-style:italic;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:200px}
+.field .file-input-wrapper.has-file .file-name{color:var(--teal);font-style:normal;font-weight:600}
+body.theme-dark .field .file-input-wrapper{background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.15)}
+body.theme-dark .field .file-input-wrapper:hover{background:rgba(46,207,186,.08);border-color:rgba(46,207,186,.4)}
+body.theme-glass .field .file-input-wrapper{background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.15);backdrop-filter:blur(8px)}
+body.theme-glass .field .file-input-wrapper:hover{background:rgba(46,207,186,.1);border-color:rgba(62,224,201,.5)}
+
+.history-tools{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:6px}
+.history-tools label{font-size:11px;font-weight:800;color:var(--navy)}
+.history-month{border:1px solid #dde5e6;border-radius:8px;padding:7px 10px;font:inherit;font-size:12px;color:var(--ink);background:#fbfdfd;outline:none}
+.history-month:focus{border-color:var(--teal);box-shadow:0 0 0 2px rgba(7,157,143,.1)}
+body.theme-dark .history-tools label,body.theme-glass .history-tools label{color:#dbe7e6}
+body.theme-dark .history-month,body.theme-glass .history-month{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.14);color:#e6efee}
+/* ── Ikon kalender pada input tanggal ──────────────────────────
+   Ikon bawaan browser berwarna gelap dan tidak bisa diwarnai
+   langsung. Solusinya: ikon bawaan disembunyikan, lalu diganti
+   SVG sendiri lewat background-image — sehingga warnanya bisa
+   diatur bebas per tema.
+
+   Catatan: color-scheme + filter:invert() TIDAK dipakai karena
+   keduanya saling meniadakan (color-scheme membuat ikon putih,
+   lalu invert mengembalikannya jadi hitam).
+   ───────────────────────────────────────────────────────────── */
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="month"]::-webkit-calendar-picker-indicator{
+  width:15px;height:15px;padding:0;margin-left:4px;
+  cursor:pointer;opacity:.75;
+  background-repeat:no-repeat;background-position:center;background-size:15px 15px;
+  transition:opacity .16s ease;
+  /* Teal untuk tema terang */
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23079d8f' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='18' rx='2'/%3E%3Cline x1='16' y1='2' x2='16' y2='6'/%3E%3Cline x1='8' y1='2' x2='8' y2='6'/%3E%3Cline x1='3' y1='10' x2='21' y2='10'/%3E%3C/svg%3E");
+}
+input[type="date"]::-webkit-calendar-picker-indicator:hover,
+input[type="month"]::-webkit-calendar-picker-indicator:hover{opacity:1}
+
+/* Tema gelap — ikon keemasan */
+body.theme-dark input[type="date"]::-webkit-calendar-picker-indicator,
+body.theme-dark input[type="month"]::-webkit-calendar-picker-indicator{
+  opacity:.9;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23d9a441' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='18' rx='2'/%3E%3Cline x1='16' y1='2' x2='16' y2='6'/%3E%3Cline x1='8' y1='2' x2='8' y2='6'/%3E%3Cline x1='3' y1='10' x2='21' y2='10'/%3E%3C/svg%3E");
+}
+/* Tema glass — ikon teal cerah */
+body.theme-glass input[type="date"]::-webkit-calendar-picker-indicator,
+body.theme-glass input[type="month"]::-webkit-calendar-picker-indicator{
+  opacity:.9;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%233ee0c9' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='18' rx='2'/%3E%3Cline x1='16' y1='2' x2='16' y2='6'/%3E%3Cline x1='8' y1='2' x2='8' y2='6'/%3E%3Cline x1='3' y1='10' x2='21' y2='10'/%3E%3C/svg%3E");
+}
+/* Kalender pop-up bawaan ikut bergaya gelap */
+body.theme-dark input[type="date"],body.theme-glass input[type="date"],
+body.theme-dark input[type="month"],body.theme-glass input[type="month"]{color-scheme:dark}
+.catalog-textarea{min-height:150px!important;font-family:ui-monospace,SFMono-Regular,Menlo,monospace!important;font-size:12px!important}
+.catalog-tools{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+.catalog-tools .modal-btn{padding:7px 12px;font-size:12px}
+.autosave-status{margin:8px 4px 0;font-size:10px;color:#66818a;min-height:14px;text-align:center}
+body.theme-dark .autosave-status{color:#7d9e9a}
+body.theme-glass .autosave-status{color:#8eaaa8}
+.history-list{display:grid;gap:8px;max-height:52vh;overflow:auto}
+.history-empty{padding:22px 10px;text-align:center;color:var(--muted);font-size:13px}
+.history-item{display:flex;align-items:center;gap:12px;padding:12px;border:1px solid #e3ebeb;border-radius:10px;background:#fbfdfd}
+.history-main{min-width:0;flex:1}
+.history-no{font-size:13px;font-weight:850;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.history-customer{font-size:12px;color:var(--ink);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.history-meta{font-size:10px;color:var(--muted);margin-top:3px}
+.history-total{font-size:12px;font-weight:800;color:var(--teal);white-space:nowrap}
+.history-actions{display:flex;gap:5px;flex:none}
+.history-action{border:1px solid #dfe8e8;background:#fff;color:var(--navy);border-radius:7px;padding:6px 8px;font:inherit;font-size:11px;font-weight:750;cursor:pointer}
+.history-action:hover{background:var(--teal-pale)}
+.history-action.delete{color:var(--red);border-color:rgba(239,61,67,.28)}
+.history-action.delete:hover{background:#fff3f3}
+body.theme-dark .history-item,body.theme-glass .history-item{background:rgba(255,255,255,.045);border-color:rgba(255,255,255,.1)}
+body.theme-dark .history-no,body.theme-glass .history-no{color:#eef8f6}
+body.theme-dark .history-customer,body.theme-glass .history-customer{color:#c9ddda}
+body.theme-dark .history-meta,body.theme-glass .history-meta{color:#8fa9a6}
+body.theme-dark .history-action,body.theme-glass .history-action{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.12);color:#e2eeec}
+body.theme-dark .history-action:hover,body.theme-glass .history-action:hover{background:rgba(46,207,186,.12)}
+@media (max-width:620px){
+  .field-grid{grid-template-columns:1fr}
+  .history-item{align-items:flex-start;flex-wrap:wrap}
+  .history-total{margin-left:auto}
+  .history-actions{width:100%;justify-content:flex-end}
+}
+
+/* ══════════════════════════════════════════════════════════════

@@ -1,0 +1,93 @@
+  display:flex;align-items:center;justify-content:center;cursor:pointer;
+  position:relative;transition:all .18s ease;
+}
+.pf-thumb:hover{border-color:var(--teal);background:rgba(7,157,143,.06)}
+/* Pratinjau memakai contain juga, supaya yang Anda lihat di
+   formulir sama persis dengan yang tampil di galeri. */
+.pf-thumb img{
+  max-width:100%;max-height:100%;
+  width:auto;height:auto;
+  object-fit:contain;display:block;margin:auto;
+}
+.pf-thumb .ph{display:flex;flex-direction:column;align-items:center;gap:5px;color:var(--muted);font-size:9.5px;font-weight:750;text-align:center;padding:6px}
+.pf-thumb .ph svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.pf-img-side{flex:1;min-width:0;display:flex;flex-direction:column;gap:7px}
+.pf-hint{font-size:10.5px;line-height:1.55;color:var(--muted)}
+.pf-grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.cat-select{
+  width:100%;border:1px solid #dde5e6;border-radius:9px;padding:9px 11px;
+  font:inherit;font-size:13px;color:var(--ink);background:#fbfdfd;outline:none;
+  appearance:none;cursor:pointer;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23079d8f' stroke-width='2' stroke-linecap='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 10px center;
+}
+.cat-select:focus{border-color:var(--teal);box-shadow:0 0 0 3px rgba(7,157,143,.12)}
+
+/* Tema gelap & glass */
+body.theme-dark .gal-search,body.theme-glass .gal-search,
+body.theme-dark .cat-select,body.theme-glass .cat-select{background-color:rgba(255,255,255,.05);border-color:rgba(255,255,255,.12);color:#e6efee}
+body.theme-dark .gal-cat,body.theme-glass .gal-cat{background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.12);color:#e2eeec}
+body.theme-dark .gal-card,body.theme-glass .gal-card{background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.1)}
+body.theme-dark .gc-name,body.theme-glass .gc-name{color:#eef5f4}
+body.theme-dark .gc-desc,body.theme-glass .gc-desc,
+body.theme-dark .gal-count,body.theme-glass .gal-count,
+body.theme-dark .gal-empty,body.theme-glass .gal-empty,
+body.theme-dark .pf-hint,body.theme-glass .pf-hint{color:#8fa9a6}
+body.theme-dark .pf-thumb,body.theme-glass .pf-thumb{background:rgba(255,255,255,.045);border-color:rgba(255,255,255,.16)}
+/* Tema glass: latar terang khusus saat ada gambar */
+body.theme-glass .gc-img{background:#f2f7f6;border-bottom-color:rgba(255,255,255,.1)}
+body.theme-glass .gc-img.empty{background:linear-gradient(135deg,rgba(46,207,186,.12),rgba(46,207,186,.04));border-bottom-color:transparent}
+body.theme-dark .gc-edit,body.theme-glass .gc-edit{background:rgba(20,20,20,.9);color:#e2eeec}
+/* Aksen emas untuk tema gelap */
+body.theme-dark .gal-cat.active{background:#a87c26 !important;border-color:#a87c26 !important;color:#1a1509 !important}
+body.theme-dark .gal-cat:hover{background:rgba(217,164,65,.16) !important;border-color:rgba(217,164,65,.45) !important}
+body.theme-dark .gal-cat.add{color:#d9a441 !important}
+body.theme-dark .gal-card:hover{border-color:rgba(217,164,65,.55) !important;box-shadow:0 10px 24px rgba(0,0,0,.4) !important}
+/* Latar putih dipertahankan agar gambar produk tetap terbaca
+   jelas — banyak logo/produk berwarna gelap. */
+body.theme-dark .gc-img{background:#f4f1ea !important;border-bottom-color:rgba(217,164,65,.18) !important}
+body.theme-dark .gc-img.empty{background:linear-gradient(135deg,rgba(217,164,65,.12),rgba(217,164,65,.04)) !important;border-bottom-color:transparent !important}
+body.theme-dark .gc-img .ph{stroke:#d9a441 !important}
+body.theme-dark .gc-price{color:#e8c56a !important}
+body.theme-dark .gc-tier{background:rgba(217,164,65,.2) !important;color:#e8c56a !important}
+body.theme-dark .gc-cat{background:rgba(217,164,65,.85) !important;color:#1a1509 !important}
+body.theme-dark .pf-thumb:hover{border-color:rgba(217,164,65,.5) !important;background:rgba(217,164,65,.08) !important}
+body.theme-dark .gal-search:focus,body.theme-dark .cat-select:focus{border-color:#d9a441 !important;box-shadow:0 0 0 3px rgba(217,164,65,.14) !important}
+@media (max-width:620px){ .gal-grid{grid-template-columns:repeat(auto-fill,minmax(128px,1fr))} .pf-grid2{grid-template-columns:1fr} }
+/* Layar lebar: manfaatkan ruang dengan kartu sedikit lebih besar */
+@media (min-width:1200px){ #galleryModal.full .gal-grid{grid-template-columns:repeat(auto-fill,minmax(186px,1fr))} #galleryModal.full .gal-card{min-height:210px} #galleryModal.full .gc-img{height:132px;min-height:132px} }
+@media (max-width:620px){ #galleryModal.full .gal-grid{grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:9px} #galleryModal.full .gal-card{min-height:178px} #galleryModal.full .gc-img{height:100px;min-height:100px} }
+
+/* ===== BAR DATA CUSTOMER (khusus layar) =====
+   Menggantikan blok "Tagihan Kepada" di lembar invoice. Data
+   customer hanya untuk keperluan internal (riwayat & penagihan),
+   jadi tidak ikut tercetak maupun masuk PDF. */
+.cust-bar{
+  position:relative;z-index:1;width:100%;margin-top:2px;
+  display:flex;align-items:center;gap:14px;
+  padding:13px 16px;border-radius:10px;
+  border:1.5px dashed rgba(7,157,143,.35);
+  background:rgba(7,157,143,.04);
+  font:inherit;text-align:left;cursor:pointer;
+  transition:background .16s ease,border-color .16s ease;
+}
+.cust-bar:hover{background:rgba(7,157,143,.09);border-color:var(--teal)}
+.cust-bar.filled{border-style:solid;border-color:rgba(17,47,82,.1);background:rgba(255,255,255,.72)}
+.cb-icon{width:26px;height:26px;flex:none;color:var(--teal);display:flex;align-items:center;justify-content:center}
+.cb-icon svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.cb-copy{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.cb-label{font-size:11px;font-weight:800;letter-spacing:.2px;color:var(--teal)}
+.cb-value{font-size:14px;font-weight:750;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cust-bar.filled .cb-value{color:var(--navy);font-weight:800}
+.cb-edit{flex:none;color:var(--muted);display:flex}
+.cb-edit svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.cust-bar:hover .cb-edit{color:var(--teal)}
+body.theme-dark .cust-bar,body.theme-glass .cust-bar{background:rgba(255,255,255,.025);border-color:rgba(46,207,186,.3)}
+body.theme-dark .cust-bar:hover,body.theme-glass .cust-bar:hover{background:rgba(46,207,186,.1)}
+body.theme-dark .cust-bar.filled,body.theme-glass .cust-bar.filled{background:rgba(255,255,255,.035);border-color:rgba(255,255,255,.08)}
+body.theme-dark .cust-bar.filled .cb-value,body.theme-glass .cust-bar.filled .cb-value{color:#f2f8f7}
+body.theme-dark .cb-label,body.theme-glass .cb-label{color:#2ecfba}
+/* Tema dark memakai aksen emas */
+body.theme-dark .cust-bar{border-color:rgba(217,164,65,.3) !important;background:rgba(217,164,65,.05) !important}
+body.theme-dark .cust-bar:hover{background:rgba(217,164,65,.12) !important;border-color:rgba(217,164,65,.55) !important}
+body.theme-dark .cust-bar.filled{background:rgba(255,255,255,.028) !important;border-color:rgba(217,164,65,.13) !important}

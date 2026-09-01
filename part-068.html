@@ -1,0 +1,173 @@
+   dibayar — jadi status lunas tidak pernah diubah otomatis.
+   Aplikasi hanya BERTANYA, keputusan tetap di tangan pengguna.
+
+   Mengikuti kebijakan toko:
+   · Nilai besar  -> pesanan diproses setelah lunas/DP  -> ditanya
+   · Nilai kecil  -> boleh dibayar saat ambil barang    -> dilewati
+
+   Tidak bertanya bila:
+   · fitur dimatikan di Pengaturan
+   · invoice sudah ditandai lunas
+   · invoice kosong (total 0)
+   · nilai di bawah ambang batas
+   · sudah ada DP/cicilan tapi masih bersisa (pengguna memang
+     sengaja mencatatnya sebagai pembayaran sebagian)
+
+   Catatan: kunci pengaturan tetap bernama cashConfirm/cashThreshold
+   (warisan saat fitur ini masih khusus tunai) agar pengaturan yang
+   sudah tersimpan di perangkat pengguna tidak hilang.
+   --------------------------------------------------------------- */
+const PAY_ASK = {
+  Cash:     'Apakah uang tunai sudah diterima penuh?',
+  Transfer: 'Apakah transfer sudah masuk ke rekening?',
+  QRIS:     'Apakah pembayaran QRIS sudah masuk?'
+};
+
+function maybeConfirmPaid(){
+  const s = readStoredSettings() || {};
+  if(s.cashConfirm === false) return;
+  if(document.getElementById('lunasStamp').classList.contains('active')) return;
+
+  const sum = getPaymentSummary();
+  if(sum.total <= 0) return;
+
+  const invNo = document.getElementById('invNo').value || '-';
+  const method = document.getElementById('payMethod').value || 'Transfer';
+
+  const tandai = function(){
+    setLunas(true);
+    renderDueFlag();
+    scheduleAutosave();
+  };
+
+  /* Sudah tertutup DP/cicilan -> tinggal tandai */
+  if(sum.rest <= 0.5){
+    if(confirm('PEMBAYARAN SUDAH TERTUTUP\n\n'
+      + 'Invoice : ' + invNo + '\n'
+      + 'Total   : ' + formatRp(sum.total) + '\n'
+      + 'Dibayar : ' + formatRp(sum.paid) + '\n\n'
+      + 'Tandai invoice ini sebagai LUNAS?')) tandai();
+    return;
+  }
+
+  /* Sudah ada pembayaran sebagian -> jangan diganggu */
+  if(sum.paid > 0) return;
+
+  /* Nilai kecil -> kebijakan toko membolehkan bayar saat ambil */
+  const limit = (s.cashThreshold === undefined || s.cashThreshold === '')
+    ? 10000 : (parseThousands(s.cashThreshold) || 0);
+  if(limit > 0 && sum.total < limit) return;
+
+  /* Untuk transfer, tampilkan nominal berkode unik bila aktif */
+  let nominal = formatRp(sum.total);
+  try{
+    const info = getPaymentInfo();
+    if(info.code) nominal = formatRp(info.payable) + ' (kode unik ' + info.code + ')';
+  }catch(e){}
+
+  if(confirm('KONFIRMASI PEMBAYARAN — ' + method.toUpperCase() + '\n\n'
+    + 'Invoice : ' + invNo + '\n'
+    + 'Tagihan : ' + nominal + '\n\n'
+    + (PAY_ASK[method] || 'Apakah pembayaran sudah diterima penuh?') + '\n\n'
+    + 'OK    = tandai LUNAS\n'
+    + 'Batal = simpan sebagai belum lunas')) tandai();
+}
+
+function saveInvoice(){
+  /* Ditanya SEBELUM data dikumpulkan agar status ikut tersimpan.
+     Error sengaja dicatat ke console, tidak ditelan diam-diam. */
+  try{ maybeConfirmPaid(); }
+  catch(err){ console.error('Konfirmasi pembayaran gagal:', err); }
+  const data = gatherInvoiceData();
+  const saved = recordHistory(data);
+  const s = readStoredSettings() || {};
+
+  /* Penyimpanan penuh: JANGAN katakan berhasil. Tawarkan jalan
+     keluar langsung supaya invoice tidak hilang begitu saja. */
+  if(!saved){
+    setAutosaveStatus('GAGAL menyimpan — penyimpanan penuh');
+    showToast('GAGAL menyimpan ke riwayat — penyimpanan browser penuh', 'error');
+    if(confirm('PENYIMPANAN BROWSER PENUH\n\n'
+      + 'Invoice ini TIDAK dapat disimpan ke riwayat.\n\n'
+      + 'Agar tidak hilang, unduh dulu sebagai file JSON?\n\n'
+      + 'Setelah itu buka Backup & Restore untuk mengunduh backup '
+      + 'lengkap, lalu hapus riwayat lama.')){
+      downloadJSON(data, 'invoice_' + sanitizeFilename(data.invNo || data.custName) + '.json');
+    }
+    return;
+  }
+
+  /* Unduhan JSON kini opsional — lihat Pengaturan > Dokumen */
+  if(s.autoDownloadJson === true){
+    downloadJSON(data, 'invoice_' + sanitizeFilename(data.invNo || data.custName) + '.json');
+  }
+  setAutosaveStatus('Invoice tersimpan ke riwayat');
+  showToast('Invoice tersimpan · ' + (data.lunas ? 'LUNAS' : 'belum lunas'));
+  /* Simpan invoice = momen paling tepat untuk mengamankan ke cloud */
+  try{ if(cloudConfig().auto) cloudBackupNow(true); }catch(e){}
+  /* Periksa sisa ruang setelah menyimpan */
+  try{ checkStorageHealth(); }catch(e){}
+}
+
+/* Unduh satu invoice dari Riwayat sebagai file JSON.
+   Disediakan agar mematikan unduhan otomatis tidak menghilangkan
+   kemampuan mengekspor invoice tunggal saat benar-benar perlu. */
+function downloadHistoryJSON(index){
+  const item = readHistory()[index];
+  if(!item || !item.data){ showToast('Data invoice tidak ditemukan', 'error'); return; }
+  downloadJSON(item.data, 'invoice_' + sanitizeFilename(item.invNo || item.custName) + '.json');
+  showToast('File JSON invoice diunduh');
+}
+function handleLoadFile(evt){
+  const file = evt.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e){
+    try{ applyInvoiceData(JSON.parse(e.target.result)); showToast('File invoice berhasil dimuat'); }
+    catch(err){ alert('File invoice tidak valid atau rusak.'); }
+  };
+  reader.readAsText(file);
+  evt.target.value = '';
+}
+function newInvoice(){
+  if(!confirm('Invoice saat ini akan disimpan ke riwayat terlebih dahulu, lalu form dikosongkan untuk invoice baru.\n\nLanjutkan?')) return;
+  saveInvoice();
+  document.getElementById('rows').innerHTML = '';
+  document.getElementById('custName').value = '';
+  document.getElementById('custPhone').value = '';
+  onCustPhoneInput();
+  refreshCustomerBar();
+  document.getElementById('dpInput').value = '';
+  document.getElementById('discountInput').value = '';
+  document.getElementById('taxInput').value = '';
+  invoicePayments = [];
+  setLunas(false);
+  const stamp = document.getElementById('lunasStamp');
+  stamp.style.left = ''; stamp.style.top = ''; stamp.style.right = '';
+  delete stamp.dataset.leftPct; delete stamp.dataset.topPct;
+  setDefaultMeta(true);
+  addRow();
+  recalcTotal(); scheduleAutosave();
+  showToast('Invoice baru siap');
+}
+
+/* ▸ TOAST ─────────────────────────────────────────────────── */
+function showToast(message, type){
+  const wrap = document.getElementById('toastWrap');
+  if(!wrap) return;
+  const toast = document.createElement('div');
+  toast.className = 'toast ' + (type || 'success');
+  toast.textContent = message;
+  wrap.appendChild(toast);
+  setTimeout(function(){ toast.classList.add('out'); setTimeout(function(){ toast.remove(); }, 280); }, 2600);
+}
+
+/* ▸ LOGO ──────────────────────────────────────────────────────
+   Logo bawaan berupa SVG tertanam supaya:
+   · tetap tampil walau offline / tanpa internet
+   · tidak gagal saat GitHub memblokir hotlink
+   · aman dirender html2canvas (gambar lintas domain bisa
+     menggagalkan proses export PDF)
+   Pengguna dapat mengganti dengan logo asli lewat Pengaturan;
+   file disimpan sebagai data URL di localStorage.
+   ─────────────────────────────────────────────────────────── */

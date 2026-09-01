@@ -1,0 +1,140 @@
+function loadSettings(){ applySettings(readStoredSettings()); }
+function settingsStatus(msg){ const el = document.getElementById('settingsStatus'); el.textContent = msg || ''; if(msg){ clearTimeout(settingsStatus._t); settingsStatus._t = setTimeout(function(){ el.textContent = ''; }, 2200); } }
+function openSettings(){
+  document.getElementById('setAddr1').value = document.getElementById('addrLine1').value;
+  document.getElementById('setAddr2').value = document.getElementById('addrLine2').value;
+  document.getElementById('setEmail').value = document.getElementById('emailLine').value;
+  document.getElementById('setWa').value = document.getElementById('waLine').value;
+  document.getElementById('setTerms').value = currentTermsFromDom().join('\n');
+  /* Katalog -> salinan kerja, selalu mulai dari mode tabel */
+  catalogTextMode = false;
+  document.getElementById('catVisual').style.display = 'block';
+  document.getElementById('catText').style.display = 'none';
+  const cmb = document.getElementById('catModeBtn');
+  if(cmb){ cmb.classList.remove('active'); cmb.textContent = 'Mode Teks'; }
+  const cs = document.getElementById('catSearch');
+  if(cs) cs.value = '';
+  setCatalogDraft(getCatalog());
+  /* Pembayaran */
+  const st = readStoredSettings() || {};
+  const banks = Array.isArray(st.banks) && st.banks.length ? st.banks : [{bank:'', no:'', an:''}];
+  document.getElementById('bankEditor').innerHTML = banks.map(bankRowHTML).join('');
+  document.getElementById('setQris').value = st.qris || '';
+  document.getElementById('setUniqueCode').checked = !!st.uniqueCode;
+  document.getElementById('setPayNote').value = st.payNote !== undefined ? st.payNote : DEFAULT_SETTINGS.payNote;
+  document.getElementById('setDueDays').value = st.dueDays ? String(st.dueDays) : '';
+  document.getElementById('setCashConfirm').checked = st.cashConfirm !== false;
+  document.getElementById('setAutoJson').checked = st.autoDownloadJson === true;
+  const ct = document.getElementById('setCashThreshold');
+  ct.value = (st.cashThreshold === undefined ? DEFAULT_SETTINGS.cashThreshold : st.cashThreshold) || '';
+  formatHargaInput(ct);
+  document.getElementById('setLogoFile').value = '';
+  document.getElementById('setSignatureFile').value = '';
+  document.getElementById('setStampFile').value = '';
+  renderLogos();
+  refreshSigPreviews();
+  settingsStatus('');
+  setSettingsTab(settingsTab);
+  syncThemeCards();
+  syncCatalogBadge();
+  document.getElementById('settingsModal').classList.add('open');
+  if(settingsTab === 'usaha') document.getElementById('setAddr1').focus();
+}
+function closeSettings(){ document.getElementById('settingsModal').classList.remove('open'); }
+
+/* Tab Pengaturan — kategori disimpan agar tab terakhir yang
+   dibuka muncul lagi saat modal dibuka berikutnya.
+   Catatan: variabel settingsTab dideklarasikan di bagian
+   STATE & KONSTANTA karena openSettings() posisinya lebih awal
+   (let tidak ter-hoisting seperti deklarasi function). */
+function setSettingsTab(name){
+  settingsTab = name;
+  document.querySelectorAll('#settingsModal .tab').forEach(function(b){
+    b.classList.toggle('active', b.dataset.tab === name);
+  });
+  document.querySelectorAll('#settingsModal .tab-panel').forEach(function(p){
+    p.classList.toggle('active', p.dataset.panel === name);
+  });
+  /* Gulir kembali ke atas saat berpindah kategori */
+  const body = document.querySelector('#settingsModal .modal-body');
+  if(body) body.scrollTop = 0;
+  const modal = document.querySelector('#settingsModal .modal');
+  if(modal) modal.scrollTop = 0;
+}
+/* Tandai kartu tema yang sedang aktif */
+function syncThemeCards(){
+  const cur = document.body.classList.contains('theme-glass') ? 'glass'
+            : (document.body.classList.contains('theme-dark') ? 'dark' : 'light');
+  document.querySelectorAll('.theme-card').forEach(function(c){
+    c.classList.toggle('active', c.dataset.theme === cur);
+  });
+}
+/* Angka pada badge tab Katalog */
+function syncCatalogBadge(){
+  const el = document.getElementById('tabCatalogCount');
+  if(el) el.textContent = catalogDraft.length;
+}
+function saveSettings(){
+  /* Kategori tidak punya isian di modal ini — ambil dari pengaturan
+     tersimpan supaya tidak terhapus saat Simpan Pengaturan. */
+  const prevCats = getCategories();
+  const data = {
+    categories: prevCats,
+    addr1: document.getElementById('setAddr1').value.trim(),
+    addr2: document.getElementById('setAddr2').value.trim(),
+    email: document.getElementById('setEmail').value.trim(),
+    wa: document.getElementById('setWa').value.trim(),
+    terms: document.getElementById('setTerms').value.split('\n').map(function(t){ return t.trim(); }).filter(Boolean),
+    /* Mode teks tidak memuat kategori & gambar — dipulihkan dari
+       catalogDraft berdasarkan nama agar tidak ikut terhapus. */
+    catalog: catalogTextMode
+      ? (function(){
+          const before = {};
+          catalogDraft.forEach(function(it){
+            if(it.name) before[String(it.name).trim().toLowerCase()] = it;
+          });
+          return parseCatalogText(document.getElementById('setCatalog').value).map(function(it){
+            const old = before[String(it.name).trim().toLowerCase()];
+            if(old){ it.category = old.category || ''; it.image = old.image || ''; }
+            return it;
+          });
+        })()
+      : readCatalogDraft(),
+    signature: sigData,
+    stamp: stampData,
+    logo: logoData,
+    banks: readBankEditor(),
+    qris: document.getElementById('setQris').value.trim().replace(/\s+/g, ''),
+    uniqueCode: document.getElementById('setUniqueCode').checked,
+    payNote: document.getElementById('setPayNote').value.trim(),
+    dueDays: Math.max(0, Math.min(365, parseInt(document.getElementById('setDueDays').value, 10) || 0)),
+    cashConfirm: document.getElementById('setCashConfirm').checked,
+    cashThreshold: parseThousands(document.getElementById('setCashThreshold').value) || 0,
+    autoDownloadJson: document.getElementById('setAutoJson').checked
+  };
+  if(!data.terms.length) data.terms = DEFAULT_SETTINGS.terms.slice();
+  /* Peringatkan bila QRIS diisi tapi tidak valid */
+  if(data.qris){
+    const qv = qrisValidate(data.qris);
+    if(!qv.ok){ showToast('QRIS tidak valid: ' + qv.msg, 'error'); return; }
+  }
+  applySettings(data);
+  try{
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(data));
+    settingsStatus('Pengaturan berhasil disimpan.');
+    showToast('Pengaturan disimpan · ' + data.catalog.length + ' produk di katalog');
+    try{ markCloudDirty(); }catch(e){}
+  }catch(err){ settingsStatus('Gagal menyimpan ke penyimpanan browser.'); showToast('Gagal menyimpan pengaturan', 'error'); }
+  setTimeout(closeSettings, 450);
+}
+function resetSettings(){
+  if(!confirm('Kembalikan alamat, email, WhatsApp, dan syarat & ketentuan ke pengaturan default?')) return;
+  try{ localStorage.removeItem(SETTINGS_KEY); }catch(err){}
+  applySettings(DEFAULT_SETTINGS);
+  document.getElementById('setAddr1').value = DEFAULT_SETTINGS.addr1;
+  document.getElementById('setAddr2').value = DEFAULT_SETTINGS.addr2;
+  document.getElementById('setEmail').value = DEFAULT_SETTINGS.email;
+  document.getElementById('setWa').value = DEFAULT_SETTINGS.wa;
+  document.getElementById('setTerms').value = DEFAULT_SETTINGS.terms.join('\n');
+  setCatalogDraft([]);
+  document.getElementById('bankEditor').innerHTML = DEFAULT_SETTINGS.banks.map(bankRowHTML).join('');

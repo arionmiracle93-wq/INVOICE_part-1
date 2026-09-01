@@ -1,0 +1,166 @@
+  return out;
+}
+function mergeCustomers(localArr, incomingArr){
+  const out = [];
+  const seen = new Set();
+  (Array.isArray(localArr) ? localArr : []).concat(Array.isArray(incomingArr) ? incomingArr : []).forEach(function(n){
+    const name = String(n || '').trim();
+    if(!name) return;
+    const key = name.toLowerCase();
+    if(seen.has(key)) return;
+    seen.add(key); out.push(name);
+  });
+  return out;
+}
+function mergeCatalog(localArr, incomingArr){
+  const out = [];
+  const seen = new Map();
+  (Array.isArray(localArr) ? localArr : []).concat(Array.isArray(incomingArr) ? incomingArr : []).forEach(function(item){
+    if(!item || !item.name) return;
+    const key = String(item.name).trim().toLowerCase();
+    if(!key) return;
+    if(seen.has(key)){
+      /* Lengkapi field yang kosong dari entri berikutnya */
+      const prev = seen.get(key);
+      if(!prev.description && item.description) prev.description = item.description;
+      if(!prev.harga && item.harga) prev.harga = item.harga;
+      if(!prev.tiers && item.tiers) prev.tiers = item.tiers;
+      if(!prev.category && item.category) prev.category = item.category;
+      if(!prev.image && item.image) prev.image = item.image;
+      return;
+    }
+    const copy = {name:item.name, description:item.description || '', harga:item.harga || '',
+                  tiers:item.tiers || '', category:item.category || '', image:item.image || ''};
+    seen.set(key, copy); out.push(copy);
+  });
+  return out;
+}
+function mergeSequence(localSeq, incomingSeq){
+  const out = Object.assign({}, localSeq || {});
+  Object.keys(incomingSeq || {}).forEach(function(k){
+    const a = parseInt(out[k], 10) || 0;
+    const b = parseInt(incomingSeq[k], 10) || 0;
+    out[k] = Math.max(a, b);
+  });
+  return out;
+}
+function mergeSettings(localS, incomingS){
+  const local = localS || {};
+  const inc = incomingS || {};
+  const pick = function(field){
+    const lv = local[field];
+    if(lv !== undefined && lv !== null && String(lv).trim() !== '') return lv;
+    return inc[field] !== undefined ? inc[field] : '';
+  };
+  const terms = (Array.isArray(local.terms) && local.terms.length) ? local.terms
+    : (Array.isArray(inc.terms) ? inc.terms : DEFAULT_SETTINGS.terms.slice());
+  return {
+    addr1: pick('addr1'), addr2: pick('addr2'), email: pick('email'), wa: pick('wa'),
+    terms: terms,
+    catalog: mergeCatalog(local.catalog, inc.catalog),
+    signature: local.signature || inc.signature || '',
+    stamp: local.stamp || inc.stamp || ''
+  };
+}
+
+/* ---------- Terapkan restore ---------- */
+function applyRestore(){
+  if(!pendingBackup){ showToast('Belum ada file backup dipilih', 'error'); return; }
+  const map = backupKeyMap();
+  const inc = pendingBackup.data || {};
+  const st = backupStats(pendingBackup);
+
+  const confirmMsg = restoreMode === 'replace'
+    ? 'TIMPA SEMUA DATA?\n\nSeluruh data di browser ini akan dihapus dan diganti dengan isi backup:\n· ' + st.history + ' invoice\n· ' + st.customers + ' pelanggan\n· ' + st.catalog + ' produk katalog\n\nTindakan ini tidak dapat dibatalkan. Lanjutkan?'
+    : 'GABUNGKAN DATA?\n\nData dari backup akan ditambahkan ke data yang ada:\n· ' + st.history + ' invoice\n· ' + st.customers + ' pelanggan\n· ' + st.catalog + ' produk katalog\n\nLanjutkan?';
+  if(!confirm(confirmMsg)) return;
+
+  try{
+    if(restoreMode === 'replace'){
+      writeLS(map.settings, inc.settings || null);
+      writeLS(map.history, Array.isArray(inc.history) ? inc.history.slice(0, 30) : []);
+      writeLS(map.customers, Array.isArray(inc.customers) ? inc.customers.slice(0, 200) : []);
+      writeLS(map.phones, inc.phones || {});
+      writeLS(map.sequence, inc.sequence || {});
+      writeLS(map.draft, inc.draft || null);
+      if(inc.theme) writeLS(map.theme, inc.theme);
+    } else {
+      const localSettings = readLS(map.settings);
+      const merged = mergeSettings(localSettings, inc.settings);
+      writeLS(map.settings, merged);
+      writeLS(map.history, mergeHistory(readLS(map.history), inc.history).slice(0, 30));
+      writeLS(map.customers, mergeCustomers(readLS(map.customers), inc.customers).slice(0, 200));
+      /* Nomor WA: gabung, nomor lokal diprioritaskan */
+      writeLS(map.phones, Object.assign({}, inc.phones || {}, readLS(map.phones) || {}));
+      writeLS(map.sequence, mergeSequence(readLS(map.sequence), inc.sequence));
+      /* Draft lokal & tema tidak diubah pada mode gabungkan */
+      if(!readLS(map.draft) && inc.draft) writeLS(map.draft, inc.draft);
+    }
+  }catch(err){
+    console.error('Restore error:', err);
+    showToast('Gagal memulihkan data. Penyimpanan browser mungkin penuh.', 'error');
+    return;
+  }
+
+  pendingBackup = null;
+  showToast('Data berhasil dipulihkan. Memuat ulang aplikasi...');
+  showExportOverlay('Memulihkan Data...', 'Aplikasi akan dimuat ulang sebentar lagi.');
+  setTimeout(function(){ location.reload(); }, 1000);
+}
+
+/* ---------- Reset total ---------- */
+function wipeAllData(){
+  if(!confirm('HAPUS SEMUA DATA?\n\nRiwayat invoice, pelanggan, katalog produk, pengaturan, tanda tangan, stempel, dan draft akan dihapus permanen dari browser ini.\n\nPastikan Anda sudah mengunduh file backup. Lanjutkan?')) return;
+  if(!confirm('Konfirmasi terakhir: seluruh data akan hilang dan TIDAK dapat dikembalikan tanpa file backup.\n\nTetap hapus semua?')) return;
+  const map = backupKeyMap();
+  try{
+    Object.keys(map).forEach(function(k){ localStorage.removeItem(map[k]); });
+    localStorage.removeItem(LAST_BACKUP_KEY);
+  }catch(e){}
+  showToast('Semua data dihapus. Memuat ulang aplikasi...');
+  showExportOverlay('Mengosongkan Data...', 'Aplikasi akan dimuat ulang sebentar lagi.');
+  setTimeout(function(){ location.reload(); }, 1000);
+}
+
+/* ▸ CLOUD BACKUP ──────────────────────────────────────────────
+   Supabase Storage, snapshot per perangkat. Prinsipnya:
+   · localStorage tetap SUMBER UTAMA -> aplikasi offline-first
+   · Cloud hanya snapshot JSON berkala (jaring pengaman)
+   · Tiap perangkat menulis ke foldernya sendiri, tidak pernah
+     saling menimpa walau dipakai bersamaan
+   · Pemulihan dari cloud SELALU merge, bukan replace
+   ─────────────────────────────────────────────────────────── */
+const CLOUD_CFG_KEY   = 'pp_invoice_cloud_cfg_v1';
+const CLOUD_STATE_KEY = 'pp_invoice_cloud_state_v1';
+const DEVICE_KEY      = 'pp_invoice_device_v1';
+const SNAP_RETENTION  = 12;   /* snapshot terakhir yang disimpan per perangkat */
+
+let cloudTimer = null;
+let cloudDirty = false;
+let cloudBusy = false;
+
+/* ---------- Identitas perangkat ---------- */
+function getDevice(){
+  let d = readLS(DEVICE_KEY);
+  if(!d || !d.id){
+    d = {
+      id: 'dev-' + Math.random().toString(36).slice(2, 8) + Date.now().toString(36).slice(-4),
+      name: '',
+      code: ''
+    };
+    writeLS(DEVICE_KEY, d);
+  }
+  return d;
+}
+function saveDevice(patch){
+  const d = Object.assign(getDevice(), patch || {});
+  writeLS(DEVICE_KEY, d);
+  return d;
+}
+function deviceLabel(){
+  const d = getDevice();
+  return d.name || ('Perangkat ' + d.id.slice(-4).toUpperCase());
+}
+
+/* ---------- Konfigurasi ---------- */
+/* Rapikan Project URL Supabase.

@@ -1,0 +1,169 @@
+  }
+
+  /* Kotak nominal transfer */
+  const box = document.getElementById('payTransferBox');
+  if(box){
+    if((showBank || showQris) && info.payable > 0){
+      box.style.display = 'block';
+      document.getElementById('ptbLabel').textContent = info.isPartial ? 'SISA YANG HARUS DIBAYAR' : 'NOMINAL PEMBAYARAN';
+      document.getElementById('ptbAmount').textContent = formatRp(info.payable);
+      document.getElementById('ptbHint').textContent = info.code
+        ? 'Mohon transfer TEPAT sampai 3 angka terakhir (kode unik ' + info.code + ') agar pembayaran cepat kami verifikasi.'
+        : (showQris ? 'Nominal sudah tertera pada QRIS di samping.' : '');
+    } else box.style.display = 'none';
+  }
+
+  /* Baris kode unik & total transfer pada kotak totals */
+  const uRow = document.getElementById('uniqueRow');
+  const tRow = document.getElementById('transferRow');
+  if(uRow && tRow){
+    if(info.code > 0){
+      uRow.style.display = 'flex';
+      tRow.style.display = 'flex';
+      document.getElementById('uniqueOut').textContent = '+ ' + info.code;
+      document.getElementById('transferOut').textContent = formatRp(info.payable);
+    } else { uRow.style.display = 'none'; tRow.style.display = 'none'; }
+  }
+
+  /* Catatan pembayaran */
+  const note = document.getElementById('payNote');
+  if(note){
+    if(info.note && (showBank || showQris)){ note.style.display = 'block'; note.textContent = info.note; }
+    else note.style.display = 'none';
+  }
+
+  /* Petunjuk bila data pembayaran belum diisi — hanya tampil di layar */
+  const hint = document.getElementById('paySetupHint');
+  const hintTxt = document.getElementById('paySetupText');
+  if(hint && hintTxt){
+    /* onclick dipasang di sini agar target gulirnya sesuai konteks */
+    if(showBank && !info.banks.length){
+      hint.style.display = 'flex';
+      hintTxt.textContent = 'Nomor rekening belum diisi — klik untuk mengatur';
+      hint.onclick = function(){ openPaymentGuide('bank'); };
+    } else if(showQris && !info.qris){
+      hint.style.display = 'flex';
+      hintTxt.textContent = 'Kode QRIS belum diisi — klik untuk mengatur';
+      hint.onclick = function(){ openPaymentGuide('qris'); };
+    } else hint.style.display = 'none';
+  }
+
+  /* QRIS */
+  const qbox = document.getElementById('payQris');
+  const holder = document.getElementById('qrisHolder');
+  if(qbox && holder){
+    if(showQris && info.qris){
+      const payload = qrisWithAmount(info.qris, info.payable);
+      if(payload && typeof qrcode !== 'undefined'){
+        try{
+          const qr = qrcode(0, 'M');
+          qr.addData(payload);
+          qr.make();
+          holder.innerHTML = qr.createImgTag(4, 0);
+          const img = holder.querySelector('img');
+          if(img){ img.style.width = '138px'; img.style.height = '138px'; img.alt = 'QRIS'; }
+          qbox.style.display = 'block';
+          document.getElementById('qrisCap').textContent = info.payable > 0
+            ? 'Nominal ' + formatRp(info.payable) + ' sudah tertanam'
+            : 'Scan untuk membayar';
+        }catch(e){ qbox.style.display = 'none'; }
+      } else qbox.style.display = 'none';
+    } else qbox.style.display = 'none';
+  }
+}
+
+function copyBankNo(btn, no){
+  if(!no) return;
+  const done = function(){
+    showToast('Nomor rekening disalin');
+    const old = btn.innerHTML;
+    btn.innerHTML = '<svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>';
+    setTimeout(function(){ btn.innerHTML = old; }, 1400);
+  };
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(no).then(done).catch(function(){ showToast('Gagal menyalin', 'error'); });
+  } else {
+    const ta = document.createElement('textarea');
+    ta.value = no; document.body.appendChild(ta); ta.select();
+    try{ document.execCommand('copy'); done(); }catch(e){ showToast('Gagal menyalin', 'error'); }
+    document.body.removeChild(ta);
+  }
+}
+
+/* ---------- Editor rekening di Pengaturan ---------- */
+function bankRowHTML(b){
+  b = b || {};
+  return '<div class="bank-row">'
+    + '<input class="b-bank" placeholder="BCA" value="' + escapeHtml(b.bank || '') + '">'
+    + '<input class="b-no" placeholder="1234567890" value="' + escapeHtml(b.no || '') + '">'
+    + '<input class="b-an" placeholder="Atas nama" value="' + escapeHtml(b.an || '') + '">'
+    + '<button class="rm" onclick="this.closest(\'.bank-row\').remove()" title="Hapus">'
+    + '<svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>'
+    + '</div>';
+}
+function addBankRow(b){
+  const box = document.getElementById('bankEditor');
+  box.insertAdjacentHTML('beforeend', bankRowHTML(b));
+}
+function readBankEditor(){
+  return Array.from(document.querySelectorAll('#bankEditor .bank-row')).map(function(row){
+    return {
+      bank: row.querySelector('.b-bank').value.trim(),
+      no: row.querySelector('.b-no').value.trim(),
+      an: row.querySelector('.b-an').value.trim()
+    };
+  }).filter(function(b){ return b.no || b.bank; });
+}
+/* Buka Pengaturan langsung ke tab & bagian yang relevan.
+   ---------------------------------------------------------------
+   target:
+     'bank'  -> gulir ke editor rekening, sorot sebentar
+     'qris'  -> gulir ke kotak QRIS
+     'guide' -> buka panduan Kode Unik vs QRIS
+   Semuanya berada di tab "Pembayaran", jadi tab itu dipilih dulu
+   supaya pengguna tidak mendarat di tab terakhir yang dibuka. */
+function openPaymentGuide(target){
+  openSettings();
+  setSettingsTab('bayar');
+  setTimeout(function(){
+    let el = null;
+    if(target === 'bank')      el = document.getElementById('bankEditor');
+    else if(target === 'qris') el = document.getElementById('setQris');
+    else {
+      const box = document.getElementById('payGuide');
+      if(box) box.classList.add('open');
+      el = box;
+    }
+    if(!el) return;
+    el.scrollIntoView({behavior:'smooth', block:'center'});
+    /* Sorot sebentar agar mudah ditemukan mata */
+    const host = el.closest('.field') || el;
+    host.classList.add('flash-focus');
+    setTimeout(function(){ host.classList.remove('flash-focus'); }, 1600);
+    /* Fokuskan isian pertama supaya langsung bisa diketik */
+    const inp = (el.id === 'setQris') ? el : el.querySelector('input');
+    if(inp) setTimeout(function(){ inp.focus(); }, 420);
+  }, 200);
+}
+
+function checkQrisPayload(){
+  const v = qrisValidate(document.getElementById('setQris').value);
+  if(!v.ok){ showToast('QRIS tidak valid: ' + v.msg, 'error'); return; }
+  const test = qrisWithAmount(v.raw, 12345);
+  if(!test){ showToast('Payload terbaca, tapi gagal disisipi nominal', 'error'); return; }
+  showToast('QRIS valid · Merchant: ' + (v.merchant || 'tidak tertera'));
+}
+
+/* ▸ CICILAN / RIWAYAT PEMBAYARAN ──────────────────────────────
+   Model data:
+     DP        = uang muka, tetap memakai kolom lama (kompatibel)
+     payments  = daftar cicilan berikutnya
+     Total dibayar = DP + jumlah seluruh cicilan
+
+   DP sengaja dipertahankan apa adanya agar invoice lama tetap
+   terbaca dan tidak ada perhitungan yang berubah.
+
+   Catatan: variabel invoicePayments dideklarasikan di bagian
+   STATE & KONSTANTA (atas) karena dipakai juga oleh recalcTotal
+   yang posisinya lebih awal.
+   ─────────────────────────────────────────────────────────── */

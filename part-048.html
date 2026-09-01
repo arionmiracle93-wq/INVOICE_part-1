@@ -1,0 +1,169 @@
+/* ▸ KATALOG PRODUK ────────────────────────────────────────── */
+function parseCatalogText(value){
+  return String(value || '').split('\n').map(function(line){
+    if(!line.trim()) return null;
+    const parts = line.split('|').map(function(p){ return p.trim(); });
+    if(!parts[0]) return null;
+    const tierText = parts.slice(3).filter(Boolean).join(';');
+    /* category & image sengaja tidak ada di format teks — keduanya
+       dipulihkan oleh pemanggil berdasarkan nama produk. */
+    return {name:parts[0], description:parts[1] || '', harga:parts[2] || '', tiers:tierText, category:'', image:''};
+  }).filter(Boolean);
+}
+/* ▸ EDITOR KATALOG ────────────────────────────────────────────
+   catalogDraft = salinan kerja selama modal Pengaturan terbuka.
+   Perubahan baru masuk ke productCatalog saat Simpan Pengaturan.
+   Penting: mengetik TIDAK memicu render ulang (agar fokus &
+   posisi kursor tidak lompat) — hanya array yang diperbarui.
+   ─────────────────────────────────────────────────────────── */
+let catalogDraft = [];
+let catalogTextMode = false;
+
+function tierBadgeFor(text){
+  const raw = String(text || '').trim();
+  if(!raw) return {cls:'', label:'—'};
+  const cfg = normalizeTiers(raw);
+  if(!cfg.list.length) return {cls:'bad', label:'?'};
+  let label = cfg.list.length + ' tier';
+  if(cfg.mode === 'graduated') label += ' ⋮';
+  if(cfg.basis === 'm2') label += ' m²';
+  return {cls:'on', label:label};
+}
+
+function catalogItemHTML(item, realIndex){
+  const b = tierBadgeFor(item.tiers);
+  return '<div class="cat-item" data-idx="' + realIndex + '">'
+    + '<input class="c-name" data-f="name" placeholder="Nama produk" value="' + escapeHtml(item.name || '') + '">'
+    + '<input data-f="description" placeholder="Keterangan" value="' + escapeHtml(item.description || '') + '">'
+    + '<input class="c-price" data-f="harga" inputmode="numeric" placeholder="0" value="' + escapeHtml(item.harga || '') + '">'
+    + '<div class="c-tier-wrap">'
+      + '<input class="c-tier" data-f="tiers" placeholder="2=8000;11=7000" value="' + escapeHtml(item.tiers || '') + '">'
+      + '<span class="c-tier-badge ' + b.cls + '">' + escapeHtml(b.label) + '</span>'
+    + '</div>'
+    + '<button class="c-del" onclick="removeCatalogItem(' + realIndex + ')" title="Hapus produk">'
+      + '<svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>'
+    + '</div>';
+}
+
+function renderCatalogEditor(){
+  const list = document.getElementById('catList');
+  if(!list) return;
+  const sEl = document.getElementById('catSearch');
+  const q = sEl ? String(sEl.value || '').trim().toLowerCase() : '';
+
+  const rows = catalogDraft.map(function(item, i){ return {item:item, i:i}; }).filter(function(r){
+    if(!q) return true;
+    return String(r.item.name || '').toLowerCase().includes(q)
+        || String(r.item.description || '').toLowerCase().includes(q);
+  });
+
+  const cnt = document.getElementById('catCount');
+  if(cnt){
+    cnt.textContent = q
+      ? ('Menampilkan ' + rows.length + ' dari ' + catalogDraft.length + ' produk')
+      : (catalogDraft.length + ' produk dalam katalog');
+  }
+  try{ syncCatalogBadge(); }catch(e){}
+
+  if(!rows.length){
+    list.innerHTML = catalogDraft.length
+      ? '<div class="cat-empty">Tidak ada produk cocok dengan pencarian.</div>'
+      : '<div class="cat-empty">Katalog masih kosong.<br>Klik <b>+ Tambah Produk</b> atau <b>Isi Contoh</b> untuk memulai.</div>';
+    return;
+  }
+  list.innerHTML = rows.map(function(r){ return catalogItemHTML(r.item, r.i); }).join('');
+}
+
+/* Update array saat mengetik — tanpa render ulang */
+(function initCatalogDelegation(){
+  document.addEventListener('input', function(e){
+    const cell = e.target.closest && e.target.closest('.cat-item');
+    if(!cell) return;
+    const idx = parseInt(cell.dataset.idx, 10);
+    const field = e.target.dataset.f;
+    if(isNaN(idx) || !field || !catalogDraft[idx]) return;
+    catalogDraft[idx][field] = e.target.value;
+    /* Badge tier diperbarui langsung tanpa menyentuh DOM lain */
+    if(field === 'tiers'){
+      const badge = cell.querySelector('.c-tier-badge');
+      if(badge){
+        const b = tierBadgeFor(e.target.value);
+        badge.className = 'c-tier-badge ' + b.cls;
+        badge.textContent = b.label;
+      }
+    }
+  });
+})();
+
+function addCatalogItem(){
+  catalogDraft.unshift({name:'', description:'', harga:'', tiers:''});
+  const s = document.getElementById('catSearch');
+  if(s) s.value = '';
+  renderCatalogEditor();
+  const first = document.querySelector('#catList .cat-item .c-name');
+  if(first) first.focus();
+}
+function removeCatalogItem(idx){
+  const item = catalogDraft[idx];
+  if(!item) return;
+  if(String(item.name || '').trim() && !confirm('Hapus produk "' + item.name + '" dari katalog?')) return;
+  catalogDraft.splice(idx, 1);
+  renderCatalogEditor();
+}
+function sortCatalogItems(){
+  catalogDraft.sort(function(a, b){
+    return String(a.name || '').localeCompare(String(b.name || ''), 'id', {sensitivity:'base'});
+  });
+  renderCatalogEditor();
+  showToast('Katalog diurutkan A–Z');
+}
+
+/* Bersihkan entri kosong sebelum disimpan */
+/* PENTING: field category & image WAJIB dibawa serta.
+   Editor teks di Pengaturan hanya menampilkan 4 kolom, jadi bila
+   tidak disalin, gambar & kategori akan terhapus diam-diam
+   setiap kali pengguna menyimpan Pengaturan. */
+/* Produk berpenanda hapus disimpan sementara di sini selama modal
+   Pengaturan terbuka, lalu dikembalikan saat menyimpan. Tanpa ini,
+   penandanya hilang dan produk yang sudah dihapus akan "hidup
+   lagi" saat PC lain menyinkronkan. */
+let catalogDeletedBuffer = [];
+
+function readCatalogDraft(){
+  const aktif = catalogDraft.map(function(it){
+    return {
+      id: it.id || newProductId(),
+      name: String(it.name || '').trim(),
+      description: String(it.description || '').trim(),
+      harga: String(it.harga || '').trim(),
+      tiers: String(it.tiers || '').trim(),
+      category: String(it.category || '').trim(),
+      image: it.image || '',
+      updatedAt: it.updatedAt || new Date().toISOString(),
+      deleted: false
+    };
+  }).filter(function(it){ return it.name; });
+  return aktif.concat(catalogDeletedBuffer);
+}
+function setCatalogDraft(items){
+  const semua = Array.isArray(items) ? items : [];
+  catalogDeletedBuffer = semua.filter(function(it){ return it && it.deleted; });
+  catalogDraft = semua.filter(function(it){ return it && !it.deleted; }).map(function(it){
+    return {
+      id: it.id || '',
+      name: it.name || '',
+      description: it.description || '',
+      harga: it.harga || '',
+      tiers: it.tiers || '',
+      category: it.category || '',
+      image: it.image || '',
+      updatedAt: it.updatedAt || ''
+    };
+  });
+  renderCatalogEditor();
+  syncCatalogTextarea();
+}
+function syncCatalogTextarea(){
+  const ta = document.getElementById('setCatalog');
+  if(ta) ta.value = catalogDraft.map(function(i){
+    return [i.name, i.description, i.harga, i.tiers || ''].join(' | ');

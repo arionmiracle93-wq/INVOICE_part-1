@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<!--
+  ══════════════════════════════════════════════════════════
+  PAMULANG PRINTING — APLIKASI INVOICE
+  Versi   : 2026.02.14
+  Catatan : file mandiri, bisa dibuka langsung tanpa server.
+            Tidak ada berkas pendukung, tidak perlu internet
+            (kecuali fitur cloud backup yang bersifat opsional).
+
+  ┌────────────────────────────────────────────────────────┐
+  │  UNTUK AI / PENGEMBANG BARU                            │
+  │  Baca dulu  AI-INSTRUCTION.md  di folder yang sama.    │
+  │  Berisi aturan yang sudah disepakati, jebakan yang     │
+  │  pernah terjadi, dan prosedur mengubah kode.           │
+  │                                                        │
+  │  Ringkas: JANGAN pecah file · JANGAN refactor besar    │
+  │  tanpa diminta · aplikasi ini SUDAH DIPAKAI bekerja.   │
+  └────────────────────────────────────────────────────────┘
+
+  ISI SINGKAT
+    · Invoice A4 + harga bertingkat + kalkulator m2
+    · Katalog produk, autocomplete produk & pelanggan
+    · DP, cicilan bertahap, jatuh tempo, penagihan WhatsApp
+    · Pembayaran: multi rekening, kode unik, QRIS dinamis
+    · Keluaran: PDF, cetak, WhatsApp, rekap CSV
+    · Data: autosave, riwayat 500 invoice, backup JSON & cloud
+    · 3 tema: Terang, Gelap (aksen emas), Glass
+
+  MEMBUAT SALINAN STABIL
+  Salin file ini dan beri nama index-stabil-<tanggal>.html
+  sebelum menambah fitur baru. Bila terjadi masalah, cukup
+  ganti nama salinan itu kembali menjadi index.html.
+
+  MENCARI SESUATU DI DALAM FILE
+  Tekan Ctrl+F lalu ketik tanda  ▸  untuk melompat antar
+  bagian. Daftar isi lengkap ada di awal blok <script>.
+
+  Nomor versi juga tampil di menu Backup & Restore.
+  ══════════════════════════════════════════════════════════
+-->
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- Cegah browser menyimpan versi lama di cache. Tanpa ini,
+     perbaikan yang sudah dibuat bisa tidak terpakai karena
+     browser memuat berkas lama. -->
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>Invoice - Pamulang Printing</title>
+
+<!-- html2canvas + jsPDF + QR generator CDN -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+
+<style>
+/* CSS PART 01/10 */
+:root{
+  --teal:#079d8f; --teal-dark:#067d72; --teal-soft:#dff2ef; --teal-pale:#eef8f7;
+  --navy:#112f52; --navy-2:#0b2744; --yellow:#f5b41b; --ink:#15283d; --muted:#667689;
+  --line:#dfe7e8; --red:#ef3d43; --white:#fff; --paper:#fbfefe; --bg-gray:#f4f7f6;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;min-height:100%}
+body{
+  background:
+    radial-gradient(circle at 12% 10%, rgba(255,255,255,.86) 0 12%, transparent 26%),
+    radial-gradient(circle at 82% 8%, rgba(255,255,255,.76) 0 10%, transparent 24%),
+    linear-gradient(135deg, #0e9d93 0%, #36bcae 30%, #eef7f4 56%, #f8fbfa 100%);
+  color:var(--ink);
+  font-family:"Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+}
+body::before, body::after{content:"";position:fixed;inset:auto;pointer-events:none;z-index:0}
+body::before{width:540px;height:540px;left:-150px;top:-160px;background:radial-gradient(circle, rgba(8,157,143,.58), transparent 66%);filter:blur(4px);animation:softGlow 8s ease-in-out infinite alternate}
+body::after{width:520px;height:520px;right:-170px;bottom:-210px;background:radial-gradient(circle, rgba(245,180,27,.22), transparent 66%);filter:blur(8px);animation:softGlow 9s ease-in-out infinite alternate-reverse}
+@keyframes softGlow{from{transform:translate3d(0,0,0) scale(1);opacity:.8}to{transform:translate3d(18px,12px,0) scale(1.05);opacity:1}}
+@keyframes sidebarIn{from{opacity:0;transform:translateX(-24px)}to{opacity:1;transform:translateX(0)}}
+@keyframes paperIn{from{opacity:0;transform:translateY(18px) scale(.985)}to{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes rowIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+.app-shell{position:relative;z-index:1;display:grid;grid-template-columns:260px minmax(0,1fr);gap:28px;min-height:100vh;padding:20px 24px 22px}
+.sidebar{
+  position:sticky;top:20px;align-self:start;min-height:calc(100vh - 42px);padding:18px 16px;
+  border:1px solid rgba(255,255,255,.72);border-radius:18px;
+  background:linear-gradient(155deg, rgba(255,255,255,.58), rgba(255,255,255,.26));
+  box-shadow:0 30px 70px rgba(17,47,82,.16), inset 0 1px 0 rgba(255,255,255,.85);
+  backdrop-filter:blur(22px);display:flex;flex-direction:column;animation:sidebarIn .55s ease both;overflow:hidden;
+}
+.sidebar::before{content:"";position:absolute;inset:-1px auto auto 0;width:100%;height:150px;background:linear-gradient(135deg, rgba(7,157,143,.3), rgba(255,255,255,0));clip-path:polygon(0 0, 100% 0, 0 100%);pointer-events:none}
+.sidebar-brand{position:relative;padding:22px 18px 14px;margin-bottom:6px;min-height:0;display:flex;align-items:center}
+.sidebar-brand-inner{display:flex;align-items:center;gap:14px}
+/* Logo dibungkus <span> berisi SVG tertanam (bukan <img> eksternal)
+   agar tetap tampil offline dan aman saat dirender ke PDF. */
+.brand-mark,.logo-mark{display:block;overflow:visible;object-fit:contain}
+.brand-mark{width:66px;height:66px;flex:none}
+.logo-mark{width:64px;height:64px;flex:none;display:flex;align-items:center;justify-content:center;overflow:hidden}
+/* Isi logo WAJIB dibatasi ke ukuran wadahnya. Tanpa aturan ini,
+   logo hasil unggahan tampil sebesar ukuran aslinya. */
+.logo-mark svg,.logo-mark img{
+  width:100%;height:100%;
+  max-width:100%;max-height:100%;
+  display:block;object-fit:contain;
+}
+.sidebar-title{font-size:20px;line-height:1.12;letter-spacing:-.4px;color:var(--navy);font-weight:800}
+/* Sama seperti header invoice: kata kedua dibuat lebih ringan */
+.sidebar-title span{display:block;color:var(--teal);margin-top:1px;font-weight:400;letter-spacing:.4px}
+/* Caption di bawah nama — kecil & tenang agar tidak bersaing */
+.sidebar-caption{font-size:9.5px;font-weight:600;letter-spacing:.5px;color:var(--muted);margin-top:5px;line-height:1.3;text-transform:uppercase}
+body.theme-dark .sidebar-caption{color:#8d8271}
+body.theme-glass .sidebar-caption{color:#8fa9a6}
+.actions{position:relative;display:flex;flex-direction:column;gap:4px;padding-top:0}
+.actions::before,.sidebar-footer::before{content:"";display:block;height:1px;background:rgba(255,255,255,.56);box-shadow:0 1px 0 rgba(17,47,82,.05);margin:0 10px 8px}
+.actions::before{margin:0 10px 6px}

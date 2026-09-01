@@ -1,0 +1,176 @@
+   ---------------------------------------------------------------
+   Dasbor Supabase menampilkan beberapa URL yang mirip, dan mudah
+   tertukar. Yang dibutuhkan hanya URL dasar project:
+
+       https://xxxxxxxx.supabase.co
+
+   Bila yang tersalin adalah URL Data API (…/rest/v1), permintaan
+   akan diarahkan ke PostgREST, bukan Storage — hasilnya error
+   404 PGRST125 "Invalid path specified in request URL".
+
+   Fungsi ini membuang seluruh path yang menempel supaya kesalahan
+   itu tidak terjadi. */
+/* Periksa apakah isian Anon Key benar-benar berupa kunci.
+   ---------------------------------------------------------------
+   Anon key Supabase berbentuk JWT: tiga bagian dipisah titik,
+   selalu diawali "eyJ" (hasil base64 dari '{"'), dan panjangnya
+   ratusan karakter.
+
+   Kesalahan yang sering terjadi: kolom ini terisi URL, karena
+   letaknya tepat di bawah kolom Project URL. */
+/* Supabase memakai DUA format kunci publik:
+      lama : eyJhbGciOi...   (JWT, tiga bagian dipisah titik)
+      baru : sb_publishable_...  (sejak 2025)
+   Keduanya sah. Yang TIDAK boleh dipakai adalah service_role
+   atau sb_secret_ — itu kunci rahasia, tidak aman ditaruh di
+   berkas HTML. */
+function isValidAnonKeyFormat(k){
+  return k.indexOf('sb_publishable_') === 0
+      || (k.indexOf('eyJ') === 0 && k.split('.').length === 3);
+}
+
+function validateAnonKey(key){
+  const k = String(key || '').trim();
+
+  if(!k){
+    alert('ANON KEY BELUM DIISI\n\n'
+      + 'Temukan di dasbor Supabase:\n'
+      + '    Project Settings → API Keys\n'
+      + '    salin "Publishable key" atau "anon / public"');
+    return false;
+  }
+  if(/^https?:\/\//i.test(k) || /supabase\.(co|com)\//i.test(k)){
+    alert('KOLOM ANON KEY BERISI URL\n\n'
+      + 'Yang terisi:\n    ' + k.slice(0, 60) + (k.length > 60 ? '...' : '') + '\n\n'
+      + 'Kunci BUKAN alamat web. Bentuknya salah satu dari:\n'
+      + '    sb_publishable_xxxxxxxxxxxx      (format baru)\n'
+      + '    eyJhbGciOiJIUzI1NiIsInR5cCI6...  (format lama)\n\n'
+      + 'Ambil dari: Project Settings → API Keys');
+    return false;
+  }
+  /* Kunci rahasia — jangan sampai tersimpan di berkas HTML */
+  if(k.indexOf('sb_secret_') === 0 || /service_role/i.test(k)){
+    alert('INI KUNCI RAHASIA — JANGAN DIPAKAI\n\n'
+      + 'Kunci yang dimasukkan adalah service_role / secret key.\n'
+      + 'Kunci ini memberi akses penuh ke seluruh database dan\n'
+      + 'TIDAK AMAN ditaruh di berkas HTML.\n\n'
+      + 'Pakai "Publishable key" atau "anon / public" saja.');
+    return false;
+  }
+  if(!isValidAnonKeyFormat(k)){
+    if(!confirm('KUNCI TERLIHAT TIDAK WAJAR\n\n'
+      + 'Kunci Supabase biasanya diawali "sb_publishable_" atau "eyJ".\n\n'
+      + 'Yang terisi:\n    ' + k.slice(0, 50) + (k.length > 50 ? '...' : '') + '\n\n'
+      + 'Tetap simpan?')) return false;
+  }
+  return true;
+}
+
+function normalizeSupabaseUrl(raw){
+  let u = String(raw || '').trim();
+  if(!u) return '';
+  u = u.replace(/\s+/g, '');
+  if(!/^https?:\/\//i.test(u)) u = 'https://' + u;
+  try{
+    const parsed = new URL(u);
+    /* Ambil origin saja — path/query/hash dibuang */
+    return parsed.origin;
+  }catch(e){
+    /* Bila URL tidak dapat diurai, buang path secara manual */
+    return u.replace(/\/(rest|storage|auth|graphql|realtime|functions)\/v\d.*$/i, '')
+            .replace(/\/+$/, '');
+  }
+}
+
+function cloudConfig(){
+  const c = readLS(CLOUD_CFG_KEY) || {};
+  return {
+    url: normalizeSupabaseUrl(c.url),
+    key: String(c.key || ''),
+    bucket: String(c.bucket || 'invoice-backup'),
+    auto: !!c.auto,
+    interval: Math.max(2, parseInt(c.interval, 10) || 10)
+  };
+}
+function cloudReady(){
+  const c = cloudConfig();
+  return !!(c.url && c.key && c.bucket);
+}
+function cloudState(){ return readLS(CLOUD_STATE_KEY) || {}; }
+function setCloudState(patch){ writeLS(CLOUD_STATE_KEY, Object.assign(cloudState(), patch || {})); }
+
+/* ---------- Indikator status ---------- */
+function setCloudStatus(kind, text){
+  const bar = document.getElementById('cloudStatus');
+  const txt = document.getElementById('cloudStatusText');
+  if(bar && txt){
+    if(!cloudReady()){ bar.style.display = 'none'; }
+    else {
+      bar.style.display = 'flex';
+      bar.className = 'cloud-status ' + (kind || '');
+      txt.textContent = text || '';
+    }
+  }
+  const badge = document.getElementById('cloudBadge');
+  const bText = document.getElementById('cloudBadgeText');
+  if(badge && bText){
+    if(!cloudReady()){ badge.className = 'cloud-badge off'; bText.textContent = 'Belum diatur'; }
+    else if(kind === 'sync'){ badge.className = 'cloud-badge sync'; bText.textContent = 'Mengunggah...'; }
+    else if(kind === 'err'){ badge.className = 'cloud-badge err'; bText.textContent = 'Gagal'; }
+    else { badge.className = 'cloud-badge ok'; bText.textContent = cloudConfig().auto ? 'Otomatis aktif' : 'Manual'; }
+  }
+}
+function refreshCloudLastInfo(){
+  const el = document.getElementById('cloudLastInfo');
+  const s = cloudState();
+  if(el){
+    el.textContent = s.lastAt
+      ? ('Backup cloud terakhir: ' + formatBackupDate(s.lastAt) + ' · ' + deviceLabel())
+      : (cloudReady() ? 'Belum ada backup cloud dari perangkat ini' : 'Belum ada backup cloud');
+  }
+  /* Tampilkan alasan kegagalan terakhir, bila ada. Tanpa ini
+     pengguna hanya melihat penanda merah tanpa tahu sebabnya. */
+  const box = document.getElementById('cloudErrBox');
+  if(box){
+    if(s.lastError){
+      box.style.display = '';
+      const t = document.getElementById('cloudErrText');
+      const w = document.getElementById('cloudErrTime');
+      if(t) t.textContent = s.lastError;
+      if(w) w.textContent = formatBackupDate(s.lastErrorAt);
+    } else box.style.display = 'none';
+  }
+}
+
+/* ---------- UI konfigurasi ---------- */
+function toggleCloudConfig(){
+  const box = document.getElementById('cloudConfig');
+  const open = box.classList.toggle('open');
+  if(open){
+    const c = cloudConfig(), d = getDevice();
+    document.getElementById('cfgSupaUrl').value = c.url;
+    document.getElementById('cfgSupaKey').value = c.key;
+    document.getElementById('cfgSupaBucket').value = c.bucket;
+    document.getElementById('cfgCloudInterval').value = c.interval;
+    document.getElementById('cfgDeviceName').value = d.name || '';
+    document.getElementById('cfgDeviceCode').value = d.code || '';
+  }
+}
+function saveCloudConfig(){
+  const rawUrl = document.getElementById('cfgSupaUrl').value.trim();
+  const url = normalizeSupabaseUrl(rawUrl);
+  const key = document.getElementById('cfgSupaKey').value.trim();
+  const bucket = document.getElementById('cfgSupaBucket').value.trim() || 'invoice-backup';
+  const interval = Math.max(2, parseInt(document.getElementById('cfgCloudInterval').value, 10) || 10);
+
+  if(url && !/^https:\/\/[^\s]+$/i.test(url)){ showToast('Project URL harus diawali https://', 'error'); return; }
+  /* Cegah URL dasbor tersimpan sebagai Project URL */
+  if(/supabase\.com/i.test(url)){
+    alert('URL yang dimasukkan adalah alamat DASBOR Supabase.\n\n'
+      + 'Yang dibutuhkan adalah Project URL, bentuknya:\n'
+      + '    https://xxxxxxxx.supabase.co\n\n'
+      + 'Temukan di: Project Settings → API → Project URL');
+    return;
+  }
+  /* Kolom Anon Key berisi URL — kesalahan yang mudah terjadi
+     karena kedua kolom bersebelahan dan sama-sama panjang. */

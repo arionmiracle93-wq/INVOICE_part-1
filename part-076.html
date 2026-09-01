@@ -1,0 +1,166 @@
+  }
+}
+
+/* ---------- Unggah snapshot ---------- */
+function stamp(){
+  const n = new Date(), p = function(v){ return String(v).padStart(2,'0'); };
+  return n.getFullYear() + p(n.getMonth()+1) + p(n.getDate()) + '-' + p(n.getHours()) + p(n.getMinutes()) + p(n.getSeconds());
+}
+async function cloudBackupNow(silent){
+  if(!cloudReady()){
+    if(!silent) showToast('Pengaturan cloud belum lengkap', 'error');
+    return false;
+  }
+  if(cloudBusy) return false;
+  if(!navigator.onLine){
+    setCloudStatus('err', 'Offline — menunggu koneksi');
+    if(!silent) showToast('Sedang offline. Backup dikirim otomatis saat online.', 'error');
+    cloudDirty = true;
+    return false;
+  }
+
+  cloudBusy = true;
+  setCloudStatus('sync', 'Mengunggah backup...');
+  try{ saveDraft(); }catch(e){}
+
+  try{
+    const dev = getDevice();
+    const obj = buildBackupObject();
+    obj.device = {id: dev.id, name: deviceLabel(), code: dev.code || ''};
+    obj.stats = backupStats(obj);
+    const body = JSON.stringify(obj);
+
+    const folder = 'snapshots/' + dev.id + '/';
+    await supaUpload(folder + stamp() + '.json', body);
+    await supaUpload('latest/' + dev.id + '.json', body);
+
+    /* Sisakan N snapshot terbaru per perangkat */
+    try{
+      const files = await supaList(folder);
+      const names = (files || []).map(function(f){ return f.name; }).filter(Boolean).sort().reverse();
+      if(names.length > SNAP_RETENTION){
+        await supaDelete(names.slice(SNAP_RETENTION).map(function(n){ return folder + n; }));
+      }
+    }catch(e){}
+
+    cloudDirty = false;
+    setCloudState({lastAt: new Date().toISOString(), lastError: '', lastErrorAt: ''});
+    setCloudStatus('ok', 'Tersimpan ' + new Date().toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'}));
+    refreshCloudLastInfo();
+    if(!silent) showToast('Backup cloud berhasil · ' + obj.stats.history + ' invoice');
+    return true;
+  }catch(err){
+    console.error('Cloud backup error:', err);
+    setCloudStatus('err', 'Backup gagal');
+    cloudDirty = true;
+    /* Simpan alasannya supaya bisa ditampilkan di panel —
+       tanpa ini pengguna hanya melihat "gagal" tanpa tahu sebabnya. */
+    setCloudState({lastError: String(err && err.message || err), lastErrorAt: new Date().toISOString()});
+    if(!silent){
+      const m = String(err && err.message || err);
+      let hint = '';
+      if(/404/.test(m) || /not found|bucket/i.test(m)){
+        hint = '\n\nBucket "' + cloudConfig().bucket + '" belum ada di Supabase.\n'
+             + 'Buat di: Storage → New bucket\n'
+             + 'Atau ubah nama bucket di Pengaturan Koneksi.';
+      } else if(/40[13]/.test(m) || /policy|denied|unauthorized/i.test(m)){
+        hint = '\n\nIzin akses bucket belum dipasang.\n'
+             + 'Lihat panduan "Cara menyiapkan Supabase" —\n'
+             + 'bagian policy untuk storage.objects.';
+      }
+      alert('BACKUP CLOUD GAGAL\n\n' + m + hint);
+    }
+    return false;
+  }finally{ cloudBusy = false; }
+}
+
+/* ---------- Daftar & pulihkan snapshot ---------- */
+async function loadCloudSnapshots(){
+  if(!cloudReady()){ showToast('Pengaturan cloud belum lengkap', 'error'); return; }
+  const wrap = document.getElementById('cloudSnapWrap');
+  const list = document.getElementById('cloudSnapList');
+  wrap.style.display = 'block';
+  list.innerHTML = '<div class="snap-empty">Memuat snapshot...</div>';
+  try{
+    const rows = await supaList('latest/');
+    const files = (rows || []).filter(function(f){ return f && f.name && /\.json$/i.test(f.name); });
+    if(!files.length){ list.innerHTML = '<div class="snap-empty">Belum ada snapshot di cloud.</div>'; return; }
+
+    const metas = await Promise.all(files.map(async function(f){
+      try{
+        const data = await supaDownload('latest/' + f.name);
+        return {path:'latest/' + f.name, data:data};
+      }catch(e){ return null; }
+    }));
+
+    const valid = metas.filter(Boolean).sort(function(a,b){
+      return new Date(b.data.exportedAt || 0) - new Date(a.data.exportedAt || 0);
+    });
+    if(!valid.length){ list.innerHTML = '<div class="snap-empty">Snapshot tidak dapat dibaca.</div>'; return; }
+
+    const myId = getDevice().id;
+    cloudSnapCache = valid;
+    list.innerHTML = valid.map(function(m, i){
+      const d = m.data || {};
+      const dv = d.device || {};
+      const st = d.stats || backupStats(d);
+      const mine = dv.id === myId;
+      return '<div class="snap-item"><div class="snap-main">'
+        + '<div class="snap-dev">' + escapeHtml(dv.name || 'Perangkat tak dikenal') + (mine ? ' (perangkat ini)' : '') + '</div>'
+        + '<div class="snap-meta">' + escapeHtml(formatBackupDate(d.exportedAt)) + ' · '
+        + st.history + ' invoice · ' + st.catalog + ' produk · ' + st.customers + ' pelanggan</div>'
+        + '</div><button class="history-action dup" onclick="restoreFromCloud(' + i + ')">Pulihkan</button></div>';
+    }).join('');
+  }catch(err){
+    list.innerHTML = '<div class="snap-empty">Gagal memuat: ' + escapeHtml(String(err.message || err)) + '</div>';
+  }
+}
+let cloudSnapCache = [];
+function restoreFromCloud(index){
+  const item = cloudSnapCache[index];
+  if(!item || !item.data){ showToast('Snapshot tidak valid', 'error'); return; }
+  pendingBackup = item.data;
+  const st = item.data.stats || backupStats(item.data);
+  const dv = item.data.device || {};
+  document.getElementById('restoreFileName').textContent = 'Cloud · ' + (dv.name || 'Perangkat tak dikenal');
+  document.getElementById('restoreFileDate').textContent = 'Dibuat: ' + formatBackupDate(item.data.exportedAt);
+  document.getElementById('preHistory').textContent = st.history;
+  document.getElementById('preCustomers').textContent = st.customers;
+  document.getElementById('preCatalog').textContent = st.catalog;
+  document.getElementById('preExtras').textContent = st.extras;
+  document.getElementById('restorePreview').classList.add('visible');
+  /* Antar-perangkat: merge jauh lebih aman daripada menimpa */
+  setRestoreMode('merge');
+  document.getElementById('restorePreview').scrollIntoView({behavior:'smooth', block:'center'});
+  showToast('Snapshot dimuat. Mode Gabungkan disarankan.');
+}
+
+/* ---------- Penjadwalan otomatis ---------- */
+function markCloudDirty(){ cloudDirty = true; }
+function restartCloudTimer(){
+  clearInterval(cloudTimer);
+  const c = cloudConfig();
+  if(!c.auto || !cloudReady()) return;
+  cloudTimer = setInterval(function(){
+    if(cloudDirty && !cloudBusy && navigator.onLine) cloudBackupNow(true);
+  }, c.interval * 60 * 1000);
+}
+window.addEventListener('online', function(){
+  if(cloudConfig().auto && cloudDirty) cloudBackupNow(true);
+});
+window.addEventListener('offline', function(){ setCloudStatus('err', 'Offline'); });
+document.addEventListener('visibilitychange', function(){
+  if(document.visibilityState === 'hidden' && cloudConfig().auto && cloudDirty && navigator.onLine){
+    cloudBackupNow(true);
+  }
+});
+
+function initCloud(){
+  const c = cloudConfig();
+  const toggle = document.getElementById('cloudAutoToggle');
+  if(toggle) toggle.checked = c.auto;
+  const lbl = document.getElementById('cloudIntervalLabel');
+  if(lbl) lbl.textContent = c.interval;
+  /* JANGAN timpa status error begitu saja. Bila backup terakhir
+     gagal, biarkan penandanya merah — kalau di-reset ke "ok",
+     pengguna mengira masalahnya sudah beres padahal belum. */

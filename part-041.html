@@ -1,0 +1,149 @@
+              <button class="active" data-mode="merge" onclick="setRestoreMode('merge')">Gabungkan</button>
+              <button data-mode="replace" onclick="setRestoreMode('replace')">Timpa Semua</button>
+            </div>
+            <div class="backup-mode-desc" id="restoreModeDesc">
+              <b>Gabungkan:</b> riwayat, pelanggan, dan katalog dari backup ditambahkan ke data yang ada. Pengaturan lokal dipertahankan bila sudah terisi. Draft yang sedang dikerjakan tidak diubah.
+            </div>
+          </div>
+
+          <div class="backup-actions">
+            <button class="modal-btn" onclick="cancelRestore()">Batal</button>
+            <button class="modal-btn primary" onclick="applyRestore()">Pulihkan Sekarang</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="backup-divider"></div>
+
+      <!-- RESET -->
+      <div class="backup-section">
+        <div class="backup-note warn">
+          <b>Zona berbahaya.</b> Menghapus seluruh data akan mengosongkan riwayat invoice, pelanggan, katalog, pengaturan, dan draft dari browser ini secara permanen. Pastikan Anda sudah mengunduh backup.
+        </div>
+        <div class="backup-actions">
+          <button class="modal-btn ghost-red" onclick="wipeAllData()">Hapus Semua Data (Reset)</button>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="modal-foot">
+      <div></div>
+      <button class="modal-btn" onclick="closeBackup()">Tutup</button>
+    </div>
+  </div>
+</div>
+
+<!-- m2 CALCULATOR POPOVER -->
+<div class="m2-calc-popover" id="m2CalcPopover">
+  <div class="m2-calc-title">Kalkulator m²</div>
+  <div class="m2-calc-units">
+    <button class="m2-calc-unit-btn active" data-unit="cm" onclick="setM2CalcUnit('cm')">cm</button>
+    <button class="m2-calc-unit-btn" data-unit="m" onclick="setM2CalcUnit('m')">m</button>
+  </div>
+  <div class="m2-calc-row"><label>Lebar</label><input id="m2CalcW" inputmode="decimal" placeholder="0"><span class="unit" id="m2CalcUnitW">cm</span></div>
+  <div class="m2-calc-row"><label>Panjang</label><input id="m2CalcH" inputmode="decimal" placeholder="0"><span class="unit" id="m2CalcUnitH">cm</span></div>
+  <div class="m2-calc-result"><span class="r-label">Hasil</span><span class="r-value" id="m2CalcResult">0,00 m²</span></div>
+  <div class="m2-calc-btns">
+    <button class="cancel" onclick="closeM2Calc()">Batal</button>
+    <button class="apply" onclick="applyM2Calc()">Terapkan</button>
+  </div>
+</div>
+
+<!-- TIER POPOVER -->
+<div class="tier-popover" id="tierPopover">
+  <div class="m2-calc-title">Harga Bertingkat</div>
+  <div class="tier-hint">Satu baris per tier: <b>minimal = harga</b>. Contoh: <b>2=8000</b>, <b>11=7000</b>. Kolom HARGA tetap menjadi harga dasar dan tidak akan tertimpa.</div>
+  <textarea id="tierEditorText" placeholder="2=8000&#10;11=7000&#10;51=6500"></textarea>
+  <div class="tier-seg-label">Mode perhitungan</div>
+  <div class="tier-seg" id="tierModeSeg">
+    <button class="active" data-mode="flat" onclick="setTierMode('flat')">Seragam</button>
+    <button data-mode="graduated" onclick="setTierMode('graduated')">Progresif</button>
+  </div>
+  <div class="tier-seg-label">Basis tingkatan</div>
+  <div class="tier-seg" id="tierBasisSeg">
+    <button class="active" data-basis="qty" onclick="setTierBasis('qty')">Qty (pcs)</button>
+    <button data-basis="m2" onclick="setTierBasis('m2')">Total m²</button>
+  </div>
+  <div class="tier-preview" id="tierPreview">Masukkan tier untuk melihat simulasi.</div>
+  <div class="m2-calc-btns">
+    <button class="cancel" onclick="clearTiers()">Hapus</button>
+    <button class="cancel" onclick="closeTierEditor()">Batal</button>
+    <button class="apply" onclick="saveTiers()">Simpan</button>
+  </div>
+</div>
+
+<!-- PRODUCT SUGGESTION BOX -->
+<div class="autocomplete-pop" id="productSuggestBox"></div>
+
+<!-- TOAST -->
+<div class="toast-wrap" id="toastWrap"></div>
+
+<!-- EXPORT PROGRESS OVERLAY -->
+<div class="export-overlay" id="exportOverlay">
+  <div class="export-modal">
+    <div class="export-spinner"></div>
+    <h3 id="exportTitle">Membuat PDF...</h3>
+    <p id="exportMessage">Mohon tunggu, invoice sedang diproses.</p>
+  </div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════
+   PAMULANG PRINTING — APLIKASI INVOICE
+   ───────────────────────────────────────────────────────────
+   Satu file mandiri. localStorage sebagai penyimpanan utama
+   (offline-first); cloud hanya jaring pengaman.
+
+   DAFTAR ISI  (gunakan Ctrl+F pada penanda ▸)
+   ▸ STATE & KONSTANTA      variabel global, kunci localStorage
+   ▸ HELPER ANGKA           format rupiah, parsing gaya Indonesia
+   ▸ HARGA BERTINGKAT       mesin tiered pricing (flat/progresif)
+   ▸ BARIS TABEL            addRow, delRow, recalcRow
+   ▸ EDITOR TIER            popover harga bertingkat per baris
+   ▸ TOTAL INVOICE          subtotal, diskon, PPN, DP, sisa
+   ▸ PEMBAYARAN             QRIS dinamis, kode unik, rekening
+   ▸ KATALOG PRODUK         editor visual + impor/ekspor CSV
+   ▸ AUTOCOMPLETE           saran produk & pelanggan
+   ▸ KALKULATOR M2          hitung luas dari dimensi
+   ▸ STEMPEL LUNAS          toggle & geser posisi
+   ▸ NAVIGASI KEYBOARD      panah antar sel tabel
+   ▸ NOMOR INVOICE          urutan harian + kode perangkat
+   ▸ JATUH TEMPO            tanggal tempo + penanda status
+   ▸ SIMPAN & MUAT          gather/apply, draft, autosave
+   ▸ CICILAN                pembayaran bertahap per invoice
+   ▸ LAPORAN BULANAN        omzet, produk terlaris, pelanggan
+   ▸ PENGINGAT TAGIH        pesan penagihan via WhatsApp
+   ▸ RIWAYAT                daftar, filter, piutang, rekonsiliasi
+   ▸ EXPORT PDF             html2canvas + jsPDF (klon di luar layar)
+   ▸ CETAK                  window.print dengan tema Light paksa
+   ▸ WHATSAPP               kirim PDF + ringkasan teks
+   ▸ TOAST                  notifikasi ringan
+   ▸ LOGO                   SVG bawaan / unggahan pengguna
+   ▸ TTD & STEMPEL          unggah gambar
+   ▸ PENGATURAN             modal bertab + simpan/reset
+   ▸ TEMA                   light / dark (emas) / glass
+   ▸ BACKUP & RESTORE       file JSON lengkap
+   ▸ CLOUD BACKUP           snapshot Supabase per perangkat
+   ▸ INISIALISASI           urutan startup
+
+   PETA CSS (Ctrl+F pada penanda ▸ atau ===== )
+   · Bagian 01-10  gaya dasar warisan struktur lama
+   · TEMA DARK — AKSEN EMAS   override terpusat, ubah di sini
+                              bila ingin ganti warna aksen
+   · PAKSA TEMA TERANG SAAT MENCETAK
+   · KONTAINER KLONING UNTUK EXPORT PDF
+   · ▸ TAB PENGATURAN / ▸ TOMBOL MODERN
+
+   CATATAN PENTING
+   · Jangan ubah id HTML tanpa memeriksa pemakaiannya di JS.
+   · Nilai input disalin manual saat kloning PDF — cloneNode()
+     tidak membawa properti .value.
+   · Media query mengikuti lebar viewport, bukan lebar elemen;
+     karena itu klon PDF punya override layout sendiri.
+   · Aturan cetak memakai .printing + .theme-* agar spesifisitas
+     mengalahkan blok aksen emas yang ber-!important.
+   · Deklarasi let/const TIDAK ter-hoisting seperti function —
+     variabel state global ditaruh di bagian STATE & KONSTANTA.
+   ═══════════════════════════════════════════════════════════ */
+

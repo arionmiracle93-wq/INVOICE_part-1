@@ -1,0 +1,112 @@
+  .brand{flex-direction:row!important}
+  .head-right{align-items:flex-end!important;text-align:right!important;min-width:200px!important;width:auto!important}
+  .meta-row{flex-direction:row!important;justify-content:flex-end!important;align-items:center!important;width:auto!important}
+  .table-actions-row{flex-direction:row!important;justify-content:flex-end!important}
+  .totals{width:260px!important;margin-left:auto!important}
+  .pay-block{width:300px!important}
+  .app-shell{display:block;min-height:0;padding:0!important}
+  .workspace{display:block;padding:0!important}
+  .invoice-frame{max-width:none;width:100%;padding:0;border:none;border-radius:0;background:#fff;box-shadow:none;backdrop-filter:none;animation:none}
+  .card{max-width:none;width:100%;min-height:0;margin:0;box-shadow:none!important;border:none;border-radius:0;padding:8mm 15mm 5mm;overflow:visible;background:#fff}
+  .top-decoration{height:24px;border-radius:0}
+  .shape-yellow{height:10px;width:60%}
+  .shape-green{height:10px;width:50%}
+  .shape-mist{display:none}
+  .head{margin-top:2px;padding-top:8px;padding-bottom:8px;gap:12px;display:flex;justify-content:space-between;align-items:flex-start}
+  .logo,.logo-mark{width:48px;height:48px}
+  .company-name{font-size:22px;align-items:baseline!important}
+  .company-name .navy-text{font-weight:800!important}
+  .company-name .teal-text{font-weight:400!important;letter-spacing:.3px!important}
+  .contact input{font-size:10px;width:200px}
+  .contact-icon svg{width:13px;height:13px}
+  .contact-group{gap:4px}
+  .head-right{display:flex;flex-direction:column;align-items:flex-end;text-align:right;min-width:200px}
+  .inv-title{font-size:28px;margin-bottom:4px;line-height:1;font-weight:850;letter-spacing:1.5px}
+  .meta-row{margin-bottom:4px;font-size:10px}
+  .meta-row input{height:24px;min-height:24px;padding:3px 10px;border-radius:12px;font-size:10px;background:transparent!important;width:160px}
+  .billto{margin-top:10px;padding:10px;gap:10px;background:#fff;box-shadow:none}
+  .bill-icon{width:20px;height:20px}
+  .bill-icon svg,.pay-icon svg{width:18px;height:18px}
+  .table-wrap{margin-top:10px;overflow:visible!important;box-shadow:none!important}
+  /* Netralkan seluruh bayangan/blur apa pun tema yang aktif */
+  .card,.card *{box-shadow:none!important;filter:none!important;text-shadow:none!important;backdrop-filter:none!important}
+  /* Cadangan bila class .printing gagal terpasang (mis. cetak
+     dipicu dari luar aplikasi). Spesifisitas dinaikkan agar
+     mengalahkan blok aksen emas tema dark. */
+  body.theme-dark .card,body.theme-glass .card,
+  body.theme-dark table,body.theme-glass table,
+  body.theme-dark tbody td,body.theme-glass tbody td,
+  body.theme-dark .billto,body.theme-glass .billto,
+  body.theme-dark .totals-box,body.theme-glass .totals-box,
+  body.theme-dark .terms-block,body.theme-glass .terms-block,
+  body.theme-dark .pay-method-card,body.theme-glass .pay-method-card,
+  body.theme-dark .paylog-block,body.theme-glass .paylog-block{background:#fff!important;border-color:#e0e7e8!important;color:#15283d!important}
+  body.theme-dark thead tr,body.theme-glass thead tr{background:transparent!important}
+  body.theme-dark thead th,body.theme-glass thead th{background:#079d8f!important;color:#fff!important}
+  body.theme-dark .t-row.total,body.theme-glass .t-row.total{background:#112f52!important;color:#fff!important}
+  body.theme-dark .top-decoration,body.theme-glass .top-decoration{display:block!important}
+  body.theme-dark .shape-yellow,body.theme-glass .shape-yellow{display:block!important;background:#f5b41b!important}
+  body.theme-dark .shape-green,body.theme-glass .shape-green{display:block!important;background:#079d8f!important}
+  table{min-width:0!important;width:100%!important}
+  thead th{font-size:10px;padding:6px 8px}
+  tbody td{padding:3px 8px;font-size:11px}
+  tr{page-break-inside:avoid!important;break-inside:avoid!important}
+  thead{display:table-header-group}
+  tbody td{page-break-inside:avoid!important;break-inside:avoid!important}
+  .totals-box,.pay-method-card,.terms-block,.signature-block,.billto,
+  .head,.terms-list li,.t-row{page-break-inside:avoid!important;break-inside:avoid!important}
+  .foot{page-break-inside:avoid!important}
+  .del-btn,.tier-btn,td.del,thead th:last-child{display:none!important}
+  /* Tombol tier sudah disembunyikan, jadi padding penyeimbangnya
+     tidak diperlukan lagi. Bila dibiarkan, 36px padding itu memakan
+     hampir separuh lebar kolom HARGA dan angkanya jadi terpotong. */
+  .harga-main input.harga{padding:0 2px!important;text-align:center!important}
+  .table-actions-row{margin-top:10px}
+  .add-row-btn{display:none!important}
+  .totals{width:260px;margin-left:auto}
+  .t-row{padding:6px 12px;font-size:12px}
+  .foot{margin-top:10px;gap:10px}
+  .pay-method-card,.terms-block{box-shadow:none;background:#fff;border-color:#e0e7e8}
+  .terms-block{padding:14px}
+  .terms-list li{font-size:10px;padding-left:28px}
+  .lunas-stamp{z-index:6}
+  input,textarea,select{border:none!important;outline:none!important;box-shadow:none!important;background:transparent!important}
+  .pay-method{background-image:none!important;border:none!important;background-color:transparent!important;padding:0!important}
+}
+
+/* ===== KONTAINER KLONING UNTUK EXPORT PDF =====
+   Klon invoice dirender di luar layar dengan lebar tetap setara A4
+   (794px @96dpi). PENTING: media query responsif mengikuti lebar VIEWPORT,
+   bukan lebar elemen — jadi semua aturan mobile HARUS dinetralkan di sini
+   agar hasil PDF identik di layar lebar maupun di ponsel. */
+.pdf-export-host{
+  position:fixed;left:-20000px;top:0;z-index:-1;
+  width:794px;background:#fff;padding:0;margin:0;
+  pointer-events:none;
+}
+.pdf-export-host .card{
+  width:794px!important;min-height:0!important;margin:0!important;
+  border-radius:0!important;box-shadow:none!important;
+  padding:22px 30px 26px!important;overflow:hidden!important;
+  background:#fff!important;position:relative!important;
+}
+
+/* --- KUNCI LAYOUT DESKTOP (netralkan @media max-width:980px & 620px) --- */
+.pdf-export-host .head{
+  display:flex!important;flex-direction:row!important;
+  justify-content:space-between!important;align-items:flex-start!important;
+  gap:24px!important;padding-top:12px!important;padding-bottom:12px!important;
+}
+.pdf-export-host .brand{display:flex!important;flex-direction:row!important;gap:14px!important;align-items:flex-start!important}
+.pdf-export-host .company-name{font-size:22px!important;flex-wrap:nowrap!important;display:flex!important;align-items:baseline!important;gap:7px!important}
+.pdf-export-host .company-name .navy-text{font-weight:800!important;color:#112f52!important}
+.pdf-export-host .company-name .teal-text{font-weight:400!important;letter-spacing:.3px!important;color:#079d8f!important}
+.pdf-export-host .logo,.pdf-export-host .logo-mark{width:56px!important;height:56px!important}
+.pdf-export-host .logo-mark svg,.pdf-export-host .logo-mark img{width:56px!important;height:56px!important}
+.pdf-export-host .contact{font-size:12px!important}
+.pdf-export-host .contact-group{gap:5px!important}
+.pdf-export-host .head-right{
+  display:flex!important;flex-direction:column!important;
+  align-items:flex-end!important;text-align:right!important;
+  min-width:250px!important;width:auto!important;
+}

@@ -1,0 +1,133 @@
+let tierEditorRow = null;
+let tierDraft = {mode:'flat', basis:'qty'};
+function refreshTierSegs(){
+  document.querySelectorAll('#tierModeSeg button').forEach(function(b){ b.classList.toggle('active', b.dataset.mode === tierDraft.mode); });
+  document.querySelectorAll('#tierBasisSeg button').forEach(function(b){ b.classList.toggle('active', b.dataset.basis === tierDraft.basis); });
+}
+function setTierMode(mode){ tierDraft.mode = mode === 'graduated' ? 'graduated' : 'flat'; refreshTierSegs(); updateTierPreview(); }
+function setTierBasis(basis){ tierDraft.basis = basis === 'm2' ? 'm2' : 'qty'; refreshTierSegs(); updateTierPreview(); }
+function currentTierDraftConfig(){
+  const parsed = parseTiers(document.getElementById('tierEditorText').value);
+  return {mode: tierDraft.mode, basis: tierDraft.basis, list: parsed.list};
+}
+function updateTierPreview(){
+  const box = document.getElementById('tierPreview');
+  if(!box) return;
+  const cfg = currentTierDraftConfig();
+  if(!tierEditorRow){ box.innerHTML = 'Pilih baris terlebih dahulu.'; return; }
+  if(!cfg.list.length){ box.innerHTML = 'Belum ada tier valid. Format: 10=7500 '; return; }
+  const qty = parseNum(tierEditorRow.querySelector('.qty').value) || 0;
+  const m2 = parseM2(tierEditorRow.querySelector('.m2').value) || 0;
+  const base = parseThousands(tierEditorRow.querySelector('.harga').value) || 0;
+  const res = computeRowPricing({qty:qty, m2:m2, base:base, tiers:cfg});
+  let html = '';
+  if(!base) html += ' <span class="warn">Harga dasar masih kosong.</span> ';
+  if(!qty) html += ' <span class="warn">Qty masih kosong — simulasi memakai qty 0.</span> ';
+  html += ' <b>' + cfg.list.length + '</b> tier · ' + (cfg.mode === 'graduated' ? 'progresif' : 'seragam') + ' · basis ' + (cfg.basis === 'm2' ? 'total m²' : 'qty') + ' ';
+  html += ' Unit terhitung: <b>' + formatNum(res.units) + (cfg.basis === 'm2' ? ' m²' : ' pcs') + '</b> ';
+  html += ' Harga efektif: <b>' + formatRp(res.unitPrice) + (cfg.basis === 'm2' ? '/m²' : '/pcs') + '</b> ';
+  html += ' Jumlah baris: <b>' + formatRp(res.amount) + '</b> ';
+  box.innerHTML = html;
+}
+function openTierEditor(e, btn){
+  if(e) e.stopPropagation();
+  tierEditorRow = btn.closest('tr');
+  const cfg = getRowTiers(tierEditorRow);
+  tierDraft.mode = cfg.mode;
+  tierDraft.basis = cfg.basis;
+  document.getElementById('tierEditorText').value = cfg.list.map(function(t){ return t.min + '=' + t.price; }).join('\n');
+  refreshTierSegs();
+  updateTierPreview();
+  const popover = document.getElementById('tierPopover');
+  const rect = btn.getBoundingClientRect();
+  const popW = 320;
+  const popH = popover.offsetHeight || 430;
+  let left = Math.max(8, Math.min(rect.left - 140, window.innerWidth - popW - 8));
+  const spaceBelow = window.innerHeight - rect.bottom - 8;
+  const spaceAbove = rect.top - 8;
+  if(spaceBelow >= popH){ var top = rect.bottom + 8; }
+  else if(spaceAbove >= popH){ var top = rect.top - popH - 8; }
+  else { var top = Math.max(8, (window.innerHeight - popH) / 2); }
+  popover.style.left = left + 'px';
+  popover.style.top = top + 'px';
+  popover.classList.add('open');
+  document.getElementById('tierEditorText').focus();
+}
+function closeTierEditor(){ document.getElementById('tierPopover').classList.remove('open'); tierEditorRow = null; }
+function saveTiers(){
+  const cfg = currentTierDraftConfig();
+  if(tierEditorRow){ setRowTiers(tierEditorRow, cfg); recalcRow(tierEditorRow); }
+  closeTierEditor();
+  scheduleAutosave();
+  showToast(cfg.list.length ? ('Harga bertingkat aktif (' + cfg.list.length + ' tier, ' + (cfg.mode === 'graduated' ? 'progresif' : 'seragam') + ')') : 'Harga bertingkat dinonaktifkan');
+}
+function clearTiers(){
+  if(tierEditorRow){ setRowTiers(tierEditorRow, TIER_DEFAULT); recalcRow(tierEditorRow); }
+  document.getElementById('tierEditorText').value = '';
+  closeTierEditor();
+  scheduleAutosave();
+  showToast('Harga bertingkat dihapus dari baris ini');
+}
+document.getElementById('tierEditorText').addEventListener('input', updateTierPreview);
+document.addEventListener('mousedown', function(e){ if(!e.target.closest('.tier-popover') && !e.target.closest('.tier-btn')) closeTierEditor(); });
+document.addEventListener('keydown', function(e){ if(e.key === 'Escape' && document.getElementById('tierPopover').classList.contains('open')) closeTierEditor(); });
+
+/* ▸ TOTAL INVOICE ─────────────────────────────────────────── */
+function parseRate(value){
+  const normalized = String(value || '').replace(',', '.').replace(/[^0-9.]/g,'');
+  const rate = parseFloat(normalized);
+  if(isNaN(rate)) return 0;
+  return Math.max(0, Math.min(100, rate));
+}
+function formatRateInput(input){
+  const raw = input.value.replace(',', '.').replace(/[^0-9.]/g,'');
+  if(!raw){ input.value = ''; return; }
+  input.value = String(parseRate(raw)).replace('.', ',');
+}
+function getInvoiceTotals(){
+  let subtotal = 0;
+  document.querySelectorAll('#rows .jumlah').forEach(function(c){ subtotal += parseFloat(c.dataset.val) || 0; });
+  const discountRate = parseRate(document.getElementById('discountInput').value);
+  const discountAmount = subtotal * discountRate / 100;
+  const taxable = Math.max(0, subtotal - discountAmount);
+  const taxRate = parseRate(document.getElementById('taxInput').value);
+  const taxAmount = taxable * taxRate / 100;
+  const total = taxable + taxAmount;
+  return {subtotal:subtotal, discountRate:discountRate, discountAmount:discountAmount, taxRate:taxRate, taxAmount:taxAmount, total:total};
+}
+function recalcTotal(){
+  const totals = getInvoiceTotals();
+  document.getElementById('subtotalOut').textContent = formatRp(totals.subtotal);
+  document.getElementById('discountOut').textContent = totals.discountAmount ? '- ' + formatRp(totals.discountAmount) : formatRp(0);
+  document.getElementById('taxOut').textContent = formatRp(totals.taxAmount);
+  /* Label PPN menampilkan persentase yang sedang dipakai */
+  const taxLbl = document.getElementById('taxLabelPct');
+  if(taxLbl) taxLbl.textContent = totals.taxRate ? ('(Pajak ' + String(totals.taxRate).replace('.', ',') + '%)') : '(Pajak)';
+  document.getElementById('totalOut').textContent = formatRp(totals.total);
+  const dpField = document.getElementById('dpInput');
+  const sisaRow = document.querySelector('.t-row.sisa');
+  const sisaEl = document.getElementById('sisaOut');
+  const dpVal = parseThousands(dpField.value) || 0;
+  const cicilan = paymentsTotal(invoicePayments);
+  /* SISA tampil bila ada DP atau ada cicilan tercatat */
+  if(!dpVal && !cicilan){
+    sisaRow.style.display = 'none';
+    sisaEl.textContent = '';
+  } else {
+    sisaRow.style.display = 'flex';
+    sisaEl.textContent = formatRp(Math.max(0, totals.total - dpVal - cicilan));
+  }
+  /* Baris cicilan & panel pembayaran menyesuaikan */
+  try{ renderPaymentRows(); }catch(e){}
+  try{ renderPaymentPanel(); }catch(e){}
+  try{ refreshTableFoot(totals.total); }catch(e){}
+}
+
+/* Kaki tabel: jumlah item, total ringkas, dan tampilan kosong.
+   Baris dianggap terisi bila ada nama produk ATAU jumlah. */
+function refreshTableFoot(total){
+  const rows = Array.from(document.querySelectorAll('#rows tr'));
+  let filled = 0;
+  rows.forEach(function(tr){
+    const p = tr.querySelector('.produk');
+    const q = tr.querySelector('.qty');

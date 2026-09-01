@@ -1,0 +1,178 @@
+  lines.push('Punya data gambar     : ' + withImg.length);
+
+  if(!withImg.length){
+    lines.push('');
+    lines.push('HASIL: Tidak ada satu pun produk yang menyimpan gambar.');
+    lines.push('');
+    lines.push('Artinya masalahnya ada di tahap MENYIMPAN, bukan');
+    lines.push('menampilkan. Langkah berikutnya:');
+    lines.push('  1. Klik ikon pensil pada satu produk');
+    lines.push('  2. Pilih Gambar -> pilih foto');
+    lines.push('  3. Perhatikan: apakah PRATINJAU muncul di kotak kiri?');
+    lines.push('  4. Klik Simpan Produk, baca notifikasinya');
+    lines.push('  5. Jalankan Periksa Gambar lagi');
+    alert(lines.join('\n'));
+    console.log('[Periksa Gambar] katalog:', items);
+    return;
+  }
+
+  /* Periksa keabsahan data */
+  let valid = 0, invalid = 0;
+  withImg.slice(0, 5).forEach(function(p, i){
+    const s = String(p.image);
+    const ok = s.indexOf('data:image') === 0 || s.indexOf('http') === 0;
+    if(ok) valid++; else invalid++;
+    lines.push('');
+    lines.push((i + 1) + '. ' + (p.name || 'Tanpa nama'));
+    lines.push('   awalan  : ' + s.slice(0, 28) + '...');
+    lines.push('   panjang : ' + s.length.toLocaleString('id-ID') + ' karakter');
+    lines.push('   status  : ' + (ok ? 'format benar' : 'FORMAT SALAH'));
+  });
+
+  /* Periksa keadaan di layar */
+  const imgs = document.querySelectorAll('#galGrid .gc-img img');
+  let tampil = 0, gagal = 0, nol = 0;
+  imgs.forEach(function(im){
+    if(!im.complete) return;
+    if(im.naturalWidth > 0){
+      const r = im.getBoundingClientRect();
+      if(r.width > 0 && r.height > 0) tampil++; else nol++;
+    } else gagal++;
+  });
+
+  lines.push('');
+  lines.push('KEADAAN DI LAYAR');
+  lines.push('Elemen gambar dibuat  : ' + imgs.length);
+  lines.push('Berhasil dimuat       : ' + tampil);
+  lines.push('Gagal dimuat          : ' + gagal);
+  lines.push('Dimuat tapi 0 ukuran  : ' + nol);
+
+  lines.push('');
+  if(!imgs.length){
+    lines.push('HASIL: Data gambar ADA, tetapi elemen gambar tidak');
+    lines.push('dibuat di layar. Kemungkinan produk bergambar sedang');
+    lines.push('tersaring oleh kategori atau kotak pencarian.');
+    lines.push('Coba pilih kategori "Semua" dan kosongkan pencarian.');
+  } else if(gagal > 0){
+    lines.push('HASIL: Data gambar rusak — browser menolak memuatnya.');
+    lines.push('Unggah ulang gambarnya lewat ikon pensil.');
+  } else if(nol > 0){
+    lines.push('HASIL: Gambar termuat tetapi ukurannya 0 di layar.');
+    lines.push('');
+    lines.push('Ini masalah tata letak — wadah gambar menyusut jadi');
+    lines.push('0 piksel. Seharusnya sudah diperbaiki pada versi ini.');
+    lines.push('Coba muat ulang halaman dengan Ctrl+Shift+R.');
+    lines.push('Bila tetap terjadi, mohon kabari saya.');
+  } else if(tampil > 0){
+    lines.push('HASIL: ' + tampil + ' gambar TAMPIL dengan benar.');
+    lines.push('');
+    lines.push('Bila Anda tetap tidak melihatnya, coba:');
+    lines.push('  · perbesar jendela galeri (tombol layar penuh)');
+    lines.push('  · pastikan menggulir ke produk yang bergambar');
+    lines.push('  · cari namanya di kotak pencarian');
+  }
+
+  alert(lines.join('\n'));
+  console.log('[Periksa Gambar] produk bergambar:', withImg.map(function(p){
+    return {nama:p.name, panjang:String(p.image).length, awalan:String(p.image).slice(0,30)};
+  }));
+  console.log('[Periksa Gambar] elemen di layar:', imgs);
+}
+
+/* Catatan pemakaian penyimpanan khusus gambar katalog */
+function updateGalleryStorageNote(){
+  const el = document.getElementById('galStorageNote');
+  if(!el) return;
+  let bytes = 0, withImg = 0;
+  activeCatalog().forEach(function(p){
+    if(p.image){ bytes += p.image.length * 2; withImg++; }
+  });
+  /* Angka ini sekaligus alat pemeriksa: bila sudah mengunggah
+     gambar tetapi di sini tetap tertulis "Belum ada gambar",
+     berarti penyimpanannya yang gagal — bukan tampilannya. */
+  el.textContent = withImg
+    ? (withImg + ' produk bergambar · ' + formatBytes(bytes))
+    : 'Belum ada gambar produk';
+}
+
+/* ---------- Tambahkan produk ke invoice ---------- */
+function addProductToInvoice(index){
+  const p = getCatalog()[index];
+  if(!p){ showToast('Produk tidak ditemukan', 'error'); return; }
+
+  /* Pakai baris kosong terakhir bila ada, agar tidak menumpuk
+     baris kosong setiap kali memilih produk */
+  let tr = null;
+  const rows = Array.from(document.querySelectorAll('#rows tr'));
+  const last = rows[rows.length - 1];
+  if(last){
+    const nm = last.querySelector('.produk');
+    const qt = last.querySelector('.qty');
+    if(nm && !nm.value.trim() && qt && !qt.value.trim()) tr = last;
+  }
+  if(!tr) tr = addRow();
+
+  tr.querySelector('.produk').value = p.name || '';
+  const desc = tr.children[1] ? tr.children[1].querySelector('textarea') : null;
+  if(desc) desc.value = p.description || '';
+  const price = tr.querySelector('.harga');
+  if(price){ price.value = String(parseThousands(p.harga) || ''); formatHargaInput(price); }
+  const qty = tr.querySelector('.qty');
+  if(qty && !qty.value.trim()) qty.value = '1';
+  setRowTiers(tr, normalizeTiers(p.tiers || ''));
+
+  tr.querySelectorAll('textarea').forEach(autoGrow);
+  recalcRow(tr);
+  scheduleAutosave();
+  showToast(p.name + ' ditambahkan ke invoice');
+  /* Sorot baris sebentar agar terlihat */
+  tr.classList.add('flash-focus');
+  setTimeout(function(){ tr.classList.remove('flash-focus'); }, 1600);
+}
+
+/* ---------- Formulir produk ---------- */
+function openProductForm(index){
+  pfIndex = index;
+  const items = getCatalog();
+  const p = (index >= 0 && items[index]) ? items[index] : {};
+
+  document.getElementById('pfTitle').textContent = index >= 0 ? 'Ubah Produk' : 'Produk Baru';
+  document.getElementById('pfName').value = p.name || '';
+  document.getElementById('pfDesc').value = p.description || '';
+  document.getElementById('pfTiers').value = p.tiers || '';
+  const price = document.getElementById('pfPrice');
+  price.value = p.harga ? String(parseThousands(p.harga)) : '';
+  formatHargaInput(price);
+  document.getElementById('pfDeleteBtn').style.display = index >= 0 ? '' : 'none';
+
+  /* Isi pilihan kategori */
+  const sel = document.getElementById('pfCategory');
+  const cats = allCategories();
+  sel.innerHTML = '<option value="">— Tanpa Kategori —</option>'
+    + cats.map(function(c){ return '<option value="' + escapeHtml(c) + '">' + escapeHtml(c) + '</option>'; }).join('');
+  sel.value = p.category || '';
+
+  pfImage = p.image || '';
+  renderProductThumb();
+
+  document.getElementById('productFormModal').classList.add('open');
+  setTimeout(function(){ document.getElementById('pfName').focus(); }, 80);
+}
+function closeProductForm(){ document.getElementById('productFormModal').classList.remove('open'); }
+
+function renderProductThumb(){
+  const box = document.getElementById('pfThumb');
+  const info = document.getElementById('pfImgInfo');
+  if(!box) return;
+  box.innerHTML = '';
+  if(pfImage){
+    /* Sama seperti kartu galeri: src diisi lewat properti DOM */
+    const im = document.createElement('img');
+    im.alt = 'Pratinjau produk';
+    im.decoding = 'sync';
+    im.addEventListener('error', function(){
+      if(info) info.innerHTML = '<b style="color:#c02a30">Gambar tidak dapat ditampilkan.</b> Coba pilih berkas lain.';
+    });
+    im.src = pfImage;
+    box.appendChild(im);
+    if(info) info.innerHTML = 'Ukuran tersimpan: <b>' + formatBytes(pfImage.length * 2) + '</b>. Gambar dikecilkan otomatis ke 400&nbsp;px.';

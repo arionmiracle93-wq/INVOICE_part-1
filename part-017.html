@@ -1,0 +1,108 @@
+.pdf-export-host .inv-title{font-size:32px!important;margin-bottom:12px!important}
+.pdf-export-host .meta-row{
+  display:flex!important;flex-direction:row!important;align-items:center!important;
+  justify-content:flex-end!important;gap:14px!important;width:auto!important;
+  margin-bottom:8px!important;font-size:12px!important;
+}
+.pdf-export-host .table-actions-row{
+  display:flex!important;flex-direction:row!important;
+  justify-content:flex-end!important;margin-top:14px!important;
+}
+.pdf-export-host .totals{width:320px!important;flex:none!important}
+.pdf-export-host .pay-block{width:320px!important}
+.pdf-export-host .foot{margin-top:14px!important;gap:12px!important}
+
+/* --- Teks statis pengganti input/textarea supaya tidak terpotong --- */
+.pdf-export-host .pdf-text{
+  display:block;width:100%;white-space:pre-wrap;word-break:break-word;
+  overflow:visible;font:inherit;color:inherit;line-height:1.42;
+  padding:1px 0;margin:0;border:none;background:transparent;min-height:15px;
+}
+.pdf-export-host .pdf-text.center{text-align:center}
+.pdf-export-host .pdf-text.right{text-align:right}
+.pdf-export-host .pdf-text.pill{
+  min-height:32px;border-radius:999px;padding:7px 16px;text-align:center;
+  background:linear-gradient(180deg,#f3f7f7,#eaf0f0);font-weight:650;
+  width:168px!important;color:#112f52;
+}
+.pdf-export-host .pdf-text.bill{font-size:15px;font-weight:800;color:#112f52}
+.pdf-export-host .pdf-text.contact{color:#40546b;line-height:16px;width:auto!important}
+.pdf-export-host .pdf-text.rate{width:52px!important;text-align:right}
+.pdf-export-host .pdf-text.dp{width:140px!important;text-align:right;border-bottom:1px solid #cfdadd}
+
+/* --- Tabel: 6 kolom (kolom aksi dibuang) --- */
+.pdf-export-host .table-wrap{overflow:visible!important;box-shadow:none!important;margin-top:12px!important}
+.pdf-export-host table{min-width:0!important;width:100%!important;table-layout:fixed!important}
+.pdf-export-host thead th{padding:8px 10px!important;font-size:10.5px!important;letter-spacing:.3px!important}
+.pdf-export-host tbody td{padding:6px 10px!important;font-size:11.5px!important;vertical-align:top!important}
+.pdf-export-host thead th{white-space:nowrap!important}
+/* Klon PDF selalu memakai header teal, apa pun tema aktif */
+.pdf-export-host thead tr{background:transparent!important}
+.pdf-export-host thead th{background:linear-gradient(135deg,#079d8f,#079684)!important;color:#fff!important}
+/* Tabel riwayat pembayaran: header polos, bukan blok teal */
+.pdf-export-host .paylog-table th{background:transparent!important;color:#667689!important;padding:0 10px 5px 0!important}
+.pdf-export-host .paylog-table td{background:transparent!important;color:#15283d!important}
+.pdf-export-host .paylog-table th:first-child,.pdf-export-host .paylog-table td:first-child{padding-left:3px!important}
+.pdf-export-host .paylog-table th:last-child,.pdf-export-host .paylog-table td:last-child{padding-right:3px!important}
+/* Lebar kolom PDF = lebar layar, dikurangi kolom aksi (4%)
+   yang sudah dibuang, lalu sisanya dialihkan ke kolom JUMLAH. */
+.pdf-export-host thead th:nth-child(1),.pdf-export-host tbody td:nth-child(1){width:26%!important}
+.pdf-export-host thead th:nth-child(2),.pdf-export-host tbody td:nth-child(2){width:24%!important}
+.pdf-export-host thead th:nth-child(3),.pdf-export-host tbody td:nth-child(3){width:12%!important}
+.pdf-export-host thead th:nth-child(4),.pdf-export-host tbody td:nth-child(4){width:8%!important}
+.pdf-export-host thead th:nth-child(5),.pdf-export-host tbody td:nth-child(5){width:13%!important}
+.pdf-export-host thead th:nth-child(6),.pdf-export-host tbody td:nth-child(6){width:17%!important}
+.pdf-export-host td.harga-cell{padding:6px 10px!important}
+.pdf-export-host .harga-main{display:block!important}
+/* Kolom HARGA pada PDF: teks statis tetap rata tengah tanpa padding
+   tombol, karena tombol tier sudah dibuang dari klon. */
+.pdf-export-host .harga-main .pdf-text{padding:0!important;text-align:center!important}
+.pdf-export-host .harga-main input.harga{padding:0 2px!important;text-align:center!important}
+/* Angka jangan sampai patah ke baris berikutnya */
+.pdf-export-host td.harga-cell,.pdf-export-host td.jumlah{white-space:nowrap!important}
+.pdf-export-host td.jumlah{text-align:right!important;white-space:nowrap!important}
+.pdf-export-host tbody td:nth-child(5){border-bottom-color:#edf1f1!important}
+
+/* --- Elemen interaktif tidak ikut dicetak --- */
+.pdf-export-host .del-btn,.pdf-export-host .tier-btn,.pdf-export-host td.del,
+.pdf-export-host .cust-suggestions,.pdf-export-host .product-suggestions,
+.pdf-export-host .add-row-btn,.pdf-export-host .m2-calc-btn{display:none!important}
+.pdf-export-host .pay-method{
+  appearance:none;background-image:none!important;border:none!important;
+  background-color:transparent!important;padding:0!important;font-weight:650;
+}
+.pdf-export-host .t-row{padding:9px 14px!important;font-size:13px!important}
+.pdf-export-host .terms-block{padding:14px 16px!important}
+.pdf-export-host .terms-list li{font-size:11.5px!important;break-inside:avoid}
+.pdf-export-host .paylog-block{background:#fff!important;box-shadow:none!important;padding:12px 14px!important;break-inside:avoid}
+.pdf-export-host .paylog-table{font-size:10.5px!important}
+@media print{ .paylog-block{background:#fff!important;box-shadow:none!important;break-inside:avoid;page-break-inside:avoid} }
+.pdf-export-host .billto{margin-top:2px!important;padding:12px 16px!important}
+.pdf-export-host .signature-block{margin-top:20px!important}
+/* Panel pembayaran pada PDF */
+.pdf-export-host .pay-panel{display:flex!important;flex-direction:row!important;gap:12px!important}
+.pdf-export-host .pay-left{flex:1!important;min-width:0!important}
+.pdf-export-host .pay-qris{width:158px!important;flex:none!important;background:#fff!important}
+.pdf-export-host .pay-qris img{width:126px!important;height:126px!important}
+.pdf-export-host .bank-copy-btn{display:none!important}
+.pdf-export-host .bank-item{background:#fff!important}
+.pdf-export-host .bank-no{font-size:13px!important}
+.pdf-export-host .ptb-amount{font-size:17px!important}
+/* Dekorasi atas: pita kuning + hijau saja, kabut samping dibuang */
+.pdf-export-host .top-decoration{display:block!important;height:44px!important}
+.pdf-export-host .shape-yellow{display:block!important;background:#f5b41b!important;height:12px!important}
+.pdf-export-host .shape-green{display:block!important;background:#079d8f!important;height:12px!important}
+.pdf-export-host .shape-mist{display:none!important}
+/* Kunci warna tema Light pada klon apa pun tema yang sedang aktif.
+   Bayangan & blur dimatikan total supaya hasil PDF flat 2D. */
+.pdf-export-host,.pdf-export-host *{
+  backdrop-filter:none!important;box-shadow:none!important;
+  filter:none!important;text-shadow:none!important;
+}
+.pdf-export-host .invoice-frame{background:#fff!important;border:none!important}
+
+/* ===== PANDUAN PEMBAYARAN (helper untuk pengguna awam) ===== */
+.guide-box{border:1px solid rgba(7,157,143,.2);border-radius:12px;background:linear-gradient(160deg,rgba(7,157,143,.07),rgba(7,157,143,.02));overflow:hidden}
+.guide-head{display:flex;align-items:center;gap:9px;padding:12px 14px;cursor:pointer;user-select:none}
+.guide-head:hover{background:rgba(7,157,143,.05)}
+.guide-head .gi{width:26px;height:26px;flex:none;border-radius:8px;background:var(--teal);color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:850}

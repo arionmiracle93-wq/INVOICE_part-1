@@ -1,0 +1,177 @@
+
+function paymentsTotal(list){
+  return (Array.isArray(list) ? list : []).reduce(function(s, p){
+    return s + (Number(p && p.amount) || 0);
+  }, 0);
+}
+/* Ringkasan pembayaran invoice yang sedang dibuka */
+function getPaymentSummary(){
+  const t = getInvoiceTotals();
+  const dp = parseThousands(document.getElementById('dpInput').value) || 0;
+  const cicilan = paymentsTotal(invoicePayments);
+  const paid = dp + cicilan;
+  return {
+    total: t.total,
+    dp: dp,
+    cicilan: cicilan,
+    paid: paid,
+    rest: Math.max(0, t.total - paid),
+    settled: t.total > 0 && paid >= t.total - 0.5
+  };
+}
+/* Tanggal ISO (YYYY-MM-DD) -> tampilan Indonesia */
+function isoToDisplay(iso){
+  const m = String(iso || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if(!m) return String(iso || '');
+  return m[3] + ' - ' + m[2] + ' - ' + m[1];
+}
+function todayISO(){
+  const n = new Date(), p = function(v){ return String(v).padStart(2,'0'); };
+  return n.getFullYear() + '-' + p(n.getMonth()+1) + '-' + p(n.getDate());
+}
+
+/* Blok riwayat pembayaran yang tampil di invoice & ikut tercetak */
+function renderPayLogBlock(){
+  const block = document.getElementById('payLogBlock');
+  const rows = document.getElementById('payLogRows');
+  if(!block || !rows) return;
+  const s = getPaymentSummary();
+  const entries = [];
+  if(s.dp > 0) entries.push({date:'', method:'', note:'Uang muka (DP)', amount:s.dp, dp:true});
+  invoicePayments.forEach(function(p){ entries.push(p); });
+
+  /* Hanya tampil bila ada lebih dari satu catatan pembayaran —
+     DP tunggal sudah terwakili baris DP di kotak total. */
+  if(!invoicePayments.length){ block.classList.remove('visible'); return; }
+
+  rows.innerHTML = entries.map(function(p){
+    return '<tr>'
+      + '<td>' + escapeHtml(p.date ? isoToDisplay(p.date) : '—') + '</td>'
+      + '<td>' + escapeHtml(p.method || '—') + '</td>'
+      + '<td>' + escapeHtml(p.note || '') + '</td>'
+      + '<td class="r amt">' + formatRp(p.amount) + '</td>'
+      + '</tr>';
+  }).join('');
+  document.getElementById('payLogSumLabel').textContent = s.settled ? 'Total dibayar — LUNAS' : 'Total dibayar';
+  document.getElementById('payLogSumVal').textContent = formatRp(s.paid);
+  block.classList.add('visible');
+}
+
+/* Baris CICILAN & TOTAL DIBAYAR pada kotak total */
+function renderPaymentRows(){
+  const s = getPaymentSummary();
+  const cRow = document.getElementById('cicilanRow');
+  const pRow = document.getElementById('totalPaidRow');
+  if(cRow && pRow){
+    if(s.cicilan > 0){
+      cRow.style.display = 'flex';
+      pRow.style.display = 'flex';
+      document.getElementById('cicilanOut').textContent = formatRp(s.cicilan);
+      document.getElementById('totalPaidOut').textContent = formatRp(s.paid);
+    } else { cRow.style.display = 'none'; pRow.style.display = 'none'; }
+  }
+  const btn = document.getElementById('payLogBtnText');
+  if(btn){
+    btn.textContent = invoicePayments.length
+      ? ('Pembayaran (' + invoicePayments.length + ') · Sisa ' + formatRp(s.rest))
+      : 'Catat Pembayaran';
+  }
+  renderPayLogBlock();
+}
+
+/* ---------- Modal ---------- */
+function openPaymentLedger(){
+  const inv = document.getElementById('invNo').value || '-';
+  const cust = document.getElementById('custName').value || 'Tanpa nama';
+  document.getElementById('plInvoiceInfo').textContent = inv + ' · ' + cust;
+  document.getElementById('plDate').value = todayISO();
+  document.getElementById('plAmount').value = '';
+  document.getElementById('plNote').value = '';
+  const pm = document.getElementById('payMethod').value;
+  document.getElementById('plMethod').value = ['Transfer','Cash','QRIS'].indexOf(pm) >= 0 ? pm : 'Transfer';
+  renderPaymentLedger();
+  document.getElementById('payLedgerModal').classList.add('open');
+}
+function closePaymentLedger(){ document.getElementById('payLedgerModal').classList.remove('open'); }
+
+function renderPaymentLedger(){
+  const s = getPaymentSummary();
+  document.getElementById('plTotal').textContent = formatRp(s.total);
+  document.getElementById('plPaid').textContent = formatRp(s.paid);
+  document.getElementById('plRest').textContent = s.settled ? 'LUNAS' : formatRp(s.rest);
+  document.getElementById('plRestCell').classList.toggle('done', s.settled);
+
+  const list = document.getElementById('plList');
+  const items = [];
+  if(s.dp > 0){
+    items.push('<div class="pl-item dp"><div class="pl-main">'
+      + '<div class="pl-top">Uang Muka (DP)</div>'
+      + '<div class="pl-sub">Tercatat pada kolom DP invoice</div>'
+      + '</div><div class="pl-amt">' + formatRp(s.dp) + '</div></div>');
+  }
+  invoicePayments.forEach(function(p, i){
+    items.push('<div class="pl-item"><div class="pl-main">'
+      + '<div class="pl-top">' + escapeHtml(p.method || 'Pembayaran') + ' · ' + escapeHtml(isoToDisplay(p.date)) + '</div>'
+      + '<div class="pl-sub">' + escapeHtml(p.note || 'Cicilan ke-' + (i + 1)) + '</div>'
+      + '</div><div class="pl-amt">' + formatRp(p.amount) + '</div>'
+      + '<button class="pl-rm" onclick="removePaymentRecord(' + i + ')" title="Hapus">'
+      + '<svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>');
+  });
+  list.innerHTML = items.length ? items.join('')
+    : '<div class="pl-empty">Belum ada pembayaran tercatat.<br>Isi formulir di bawah untuk menambahkan.</div>';
+}
+
+function fillPaymentAmount(kind){
+  const s = getPaymentSummary();
+  const val = kind === 'half' ? Math.round(s.rest / 2) : s.rest;
+  const el = document.getElementById('plAmount');
+  el.value = val > 0 ? val.toLocaleString('id-ID') : '';
+}
+
+function addPaymentRecord(){
+  const amount = parseThousands(document.getElementById('plAmount').value) || 0;
+  if(amount <= 0){ showToast('Jumlah pembayaran belum diisi', 'error'); document.getElementById('plAmount').focus(); return; }
+  const s = getPaymentSummary();
+  if(amount > s.rest + 0.5){
+    if(!confirm('Jumlah ini melebihi sisa tagihan (' + formatRp(s.rest) + ').\n\nTetap catat sebagai kelebihan bayar?')) return;
+  }
+  invoicePayments.push({
+    date: document.getElementById('plDate').value || todayISO(),
+    amount: amount,
+    method: document.getElementById('plMethod').value || 'Transfer',
+    note: document.getElementById('plNote').value.trim()
+  });
+  /* Urutkan menurut tanggal agar riwayat runtut */
+  invoicePayments.sort(function(a,b){ return String(a.date).localeCompare(String(b.date)); });
+
+  document.getElementById('plAmount').value = '';
+  document.getElementById('plNote').value = '';
+  recalcTotal();
+  renderPaymentLedger();
+  scheduleAutosave();
+
+  const after = getPaymentSummary();
+  if(after.settled && !document.getElementById('lunasStamp').classList.contains('active')){
+    showToast('Pembayaran tercatat · tagihan sudah lunas');
+    if(confirm('Total pembayaran sudah menutup tagihan.\n\nTandai invoice ini sebagai LUNAS?')){
+      setLunas(true);
+      renderDueFlag();
+      scheduleAutosave();
+      renderPaymentLedger();
+    }
+  } else {
+    showToast('Pembayaran ' + formatRp(amount) + ' tercatat · sisa ' + formatRp(after.rest));
+  }
+}
+function removePaymentRecord(i){
+  const p = invoicePayments[i];
+  if(!p) return;
+  if(!confirm('Hapus catatan pembayaran ' + formatRp(p.amount) + '?')) return;
+  invoicePayments.splice(i, 1);
+  recalcTotal();
+  renderPaymentLedger();
+  scheduleAutosave();
+  showToast('Catatan pembayaran dihapus');
+}
+document.getElementById('payLedgerModal').addEventListener('mousedown', function(e){ if(e.target === this) closePaymentLedger(); });
+

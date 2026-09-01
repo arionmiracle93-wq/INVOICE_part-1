@@ -1,0 +1,207 @@
+    /* Bentuk kunci diperiksa dulu — tetapi hanya bila memang
+       tidak dikenali. Format sb_publishable_ dan eyJ keduanya sah. */
+    if(k && !isValidAnonKeyFormat(k)){
+      return {
+        judul: 'KUNCI TIDAK DIKENALI',
+        pesan: 'Kunci yang tersimpan tidak berbentuk kunci publik Supabase.\n\n'
+          + 'Yang tersimpan:\n    ' + k.slice(0, 50) + (k.length > 50 ? '...' : '') + '\n\n'
+          + 'Bentuk yang benar:\n'
+          + '    sb_publishable_xxxxxxxxxxxx      (format baru)\n'
+          + '    eyJhbGciOiJIUzI1NiIsInR5cCI6...  (format lama)\n\n'
+          + 'Ambil dari: Project Settings → API Keys',
+        aksi: null
+      };
+    }
+    /* Kunci sudah benar → hampir pasti policy yang belum dipasang */
+    return {
+      judul: 'IZIN AKSES BELUM DIPASANG',
+      pesan: 'Kunci Anda sudah benar, tetapi tabel "' + SYNC_TABLE + '"\n'
+        + 'menolak akses.\n\n'
+        + 'Penyebab tersering: bagian POLICY pada skrip SQL belum\n'
+        + 'ikut dijalankan — hanya bagian "create table" saja.\n\n'
+        + 'Jalankan ULANG seluruh skrip SQL dari baris pertama\n'
+        + 'sampai terakhir. Aman diulang.',
+      aksi: 'sql'
+    };
+  }
+  /* Kolom tidak cocok */
+  if(/PGRST204/i.test(body) || /column .* does not exist/i.test(body)){
+    return {
+      judul: 'STRUKTUR TABEL TIDAK COCOK',
+      pesan: 'Tabel "' + SYNC_TABLE + '" ada, tetapi kolomnya berbeda.\n\n'
+        + 'Kemungkinan dibuat manual atau dari versi lama.\n'
+        + 'Hapus tabelnya di Supabase, lalu jalankan ulang skrip SQL.',
+      aksi: 'sql'
+    };
+  }
+  return {
+    judul: 'SINKRONISASI GAGAL',
+    pesan: 'Kode ' + (status || '-') + '\n\n' + (body.slice(0, 220) || String(err && err.message || err)),
+    aksi: null
+  };
+}
+
+/* Tampilkan kesalahan beserta tawaran langkah perbaikan */
+function reportSyncError(err){
+  const info = explainSyncError(err);
+  if(info.aksi === 'sql'){
+    if(confirm(info.judul + '\n\n' + info.pesan + '\n\n'
+      + 'Buka skrip SQL sekarang?\n'
+      + '(Skrip akan tersalin otomatis — tinggal tempel di\n'
+      + ' Supabase → SQL Editor → Run)')){
+      showSyncSql();
+    }
+  } else {
+    alert(info.judul + '\n\n' + info.pesan);
+  }
+  console.error('[Sinkronisasi]', err && err.status, err && err.body || err);
+}
+
+async function restSelectAll(){
+  const c = cloudConfig();
+  const res = await fetch(c.url + '/rest/v1/' + SYNC_TABLE + '?select=*', {
+    headers: restHeaders()
+  });
+  if(!res.ok) throw syncError('Ambil data', res.status, await res.text());
+  return await res.json();
+}
+async function restUpsert(rows){
+  if(!rows.length) return;
+  const c = cloudConfig();
+  const res = await fetch(c.url + '/rest/v1/' + SYNC_TABLE, {
+    method: 'POST',
+    headers: restHeaders({'Prefer': 'resolution=merge-duplicates,return=minimal'}),
+    body: JSON.stringify(rows)
+  });
+  if(!res.ok) throw syncError('Kirim data', res.status, await res.text());
+}
+
+/* Periksa apakah tabel sudah siap dipakai. Dipanggil sebelum
+   sinkronisasi diaktifkan, supaya pengguna tidak kebingungan
+   melihat kesalahan setelah mencentang. */
+/* Periksa tabel secara menyeluruh: BACA dan TULIS diuji terpisah.
+   ---------------------------------------------------------------
+   Ini penting karena izin baca & tulis diatur terpisah di Supabase.
+   Bila hanya baca yang diuji, aplikasi bisa mengira semuanya siap
+   padahal pengiriman data akan ditolak beberapa detik kemudian. */
+async function checkSyncTable(){
+  const c = cloudConfig();
+
+  /* Tahap 1 — baca */
+  try{
+    const res = await fetch(c.url + '/rest/v1/' + SYNC_TABLE + '?select=id&limit=1', {
+      headers: restHeaders()
+    });
+    if(!res.ok) return {ok:false, tahap:'baca', err: syncError('Baca tabel', res.status, await res.text())};
+  }catch(e){
+    return {ok:false, tahap:'baca', err: e};
+  }
+
+  /* Tahap 2 — tulis. Memakai baris uji yang langsung dihapus. */
+  const probeId = 'probe-' + Date.now().toString(36);
+  try{
+    const res = await fetch(c.url + '/rest/v1/' + SYNC_TABLE, {
+      method: 'POST',
+      headers: restHeaders({'Prefer':'resolution=merge-duplicates,return=minimal'}),
+      body: JSON.stringify([{
+        id: probeId, name: '__uji_koneksi__',
+        updated_at: new Date().toISOString(), deleted: true
+      }])
+    });
+    if(!res.ok) return {ok:false, tahap:'tulis', err: syncError('Tulis tabel', res.status, await res.text())};
+    /* Bersihkan baris uji — kegagalan di sini tidak masalah */
+    fetch(c.url + '/rest/v1/' + SYNC_TABLE + '?id=eq.' + probeId, {
+      method: 'DELETE', headers: restHeaders()
+    }).catch(function(){});
+  }catch(e){
+    return {ok:false, tahap:'tulis', err: e};
+  }
+
+  return {ok:true};
+}
+
+/* Ubah bentuk data lokal <-> baris tabel */
+function toRow(p){
+  return {
+    id: p.id,
+    name: p.name || '',
+    description: p.description || '',
+    harga: String(p.harga || ''),
+    tiers: p.tiers || '',
+    category: p.category || '',
+    image: p.image || '',
+    updated_at: p.updatedAt || new Date().toISOString(),
+    deleted: !!p.deleted
+  };
+}
+function fromRow(r){
+  return {
+    id: r.id,
+    name: r.name || '',
+    description: r.description || '',
+    harga: String(r.harga || ''),
+    tiers: r.tiers || '',
+    category: r.category || '',
+    image: r.image || '',
+    updatedAt: r.updated_at || new Date(0).toISOString(),
+    deleted: !!r.deleted
+  };
+}
+
+/* ---------- Inti sinkronisasi ---------- */
+async function syncCatalogNow(silent){
+  if(!syncEnabled()){
+    if(!silent) showToast('Sinkronisasi katalog belum diaktifkan', 'error');
+    return false;
+  }
+  if(syncBusy) return false;
+  if(!navigator.onLine){
+    setSyncStatus('err', 'Offline');
+    if(!silent) showToast('Sedang offline — sinkronisasi ditunda', 'error');
+    return false;
+  }
+
+  syncBusy = true;
+  setSyncStatus('sync', 'Menyinkronkan...');
+
+  try{
+    /* Ambil seluruh isi katalog lokal, lengkapi penandanya */
+    const local = getCatalog();
+    ensureProductMeta(local);
+
+    const remote = await restSelectAll();
+
+    /* Gabungkan: yang paling baru menang */
+    const map = {};
+    local.forEach(function(p){ map[p.id] = p; });
+
+    const toPush = [];
+    remote.forEach(function(r){
+      const rp = fromRow(r);
+      const lp = map[rp.id];
+      if(!lp){
+        map[rp.id] = rp;                    /* baru dari PC lain */
+      } else {
+        const lt = new Date(lp.updatedAt || 0).getTime();
+        const rt = new Date(rp.updatedAt || 0).getTime();
+        if(rt > lt) map[rp.id] = rp;        /* remote lebih baru */
+        else if(lt > rt) toPush.push(lp);   /* lokal lebih baru  */
+      }
+    });
+
+    /* Produk lokal yang belum ada di server */
+    const remoteIds = {};
+    remote.forEach(function(r){ remoteIds[r.id] = true; });
+    local.forEach(function(p){ if(!remoteIds[p.id]) toPush.push(p); });
+
+    if(toPush.length) await restUpsert(toPush.map(toRow));
+
+    /* Simpan hasil gabungan; baris berpenanda hapus tetap
+       disimpan agar penghapusan tidak "hidup lagi" */
+    const merged = Object.keys(map).map(function(k){ return map[k]; });
+    merged.sort(function(a, b){ return String(a.name).localeCompare(String(b.name), 'id'); });
+    persistCatalog(merged, true);
+
+    syncLastAt = new Date();
+    syncLastPushed = toPush.length;
+    const aktif = merged.filter(function(p){ return !p.deleted; }).length;

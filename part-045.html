@@ -1,0 +1,167 @@
+    if((p && p.value.trim()) || (q && q.value.trim())) filled++;
+  });
+  const cnt = document.getElementById('itemCount');
+  if(cnt) cnt.textContent = filled + ' item';
+  const tot = document.getElementById('tfTotal');
+  if(tot) tot.textContent = formatRp(total != null ? total : getInvoiceTotals().total);
+  /* Tampilan "belum ada item" hanya saat benar-benar tidak ada baris */
+  const empty = document.getElementById('tableEmpty');
+  if(empty) empty.classList.toggle('show', rows.length === 0);
+}
+document.getElementById('dpInput').addEventListener('input', function(){ formatHargaInput(this); recalcTotal(); });
+document.querySelectorAll('#discountInput, #taxInput').forEach(function(input){
+  input.addEventListener('input', function(){ formatRateInput(this); recalcTotal(); });
+});
+
+/* ▸ PEMBAYARAN ────────────────────────────────────────────────
+   Rekening bank, kode unik transfer, dan QRIS dinamis.
+   ───────────────────────────────────────────────────────────
+   QRIS memakai format EMVCo TLV: ID(2) + LEN(2) + VALUE.
+   Untuk menyisipkan nominal ke QRIS statis:
+     1. tag 01 diubah dari "11" (statis) menjadi "12" (dinamis)
+     2. tag 54 (nominal) disisipkan sebelum tag 58 (kode negara)
+     3. CRC pada tag 63 dihitung ulang (CRC-16/CCITT-FALSE)
+   ========================================================= */
+
+/* CRC-16/CCITT-FALSE: poly 0x1021, init 0xFFFF, tanpa refleksi */
+function qrisCRC(str){
+  let crc = 0xFFFF;
+  for(let i = 0; i < str.length; i++){
+    crc ^= str.charCodeAt(i) << 8;
+    for(let j = 0; j < 8; j++){
+      crc = (crc & 0x8000) ? ((crc << 1) ^ 0x1021) : (crc << 1);
+      crc &= 0xFFFF;
+    }
+  }
+  return crc.toString(16).toUpperCase().padStart(4, '0');
+}
+
+/* Pecah payload EMVCo menjadi daftar {id, value} tingkat atas */
+function qrisParse(payload){
+  const out = [];
+  let i = 0;
+  const s = String(payload || '');
+  while(i + 4 <= s.length){
+    const id = s.substr(i, 2);
+    const len = parseInt(s.substr(i + 2, 2), 10);
+    if(isNaN(len) || len < 0) return null;
+    const value = s.substr(i + 4, len);
+    if(value.length < len) return null;
+    out.push({id: id, value: value});
+    i += 4 + len;
+  }
+  return i === s.length ? out : null;
+}
+function qrisTLV(id, value){
+  return id + String(value.length).padStart(2, '0') + value;
+}
+
+/* Validasi payload QRIS statis */
+function qrisValidate(payload){
+  const raw = String(payload || '').trim().replace(/\s+/g, '');
+  if(!raw) return {ok:false, msg:'Payload kosong'};
+  if(raw.length < 40) return {ok:false, msg:'Payload terlalu pendek — pastikan seluruh teks QR tersalin'};
+  const tags = qrisParse(raw);
+  if(!tags) return {ok:false, msg:'Struktur TLV tidak valid — kemungkinan teks terpotong'};
+  const get = function(id){ const t = tags.find(function(x){ return x.id === id; }); return t ? t.value : null; };
+  if(get('00') === null) return {ok:false, msg:'Tag 00 (format indicator) tidak ditemukan'};
+  if(get('63') === null) return {ok:false, msg:'Tag 63 (CRC) tidak ditemukan'};
+  /* Verifikasi CRC bawaan */
+  const idx = raw.lastIndexOf('6304');
+  if(idx === -1) return {ok:false, msg:'Penanda CRC tidak ditemukan'};
+  const expect = qrisCRC(raw.substring(0, idx + 4));
+  const actual = raw.substring(idx + 4, idx + 8).toUpperCase();
+  if(expect !== actual) return {ok:false, msg:'CRC tidak cocok (' + actual + ' ≠ ' + expect + ') — teks mungkin salah salin'};
+  return {ok:true, merchant: get('59') || '', city: get('60') || '', tags: tags, raw: raw};
+}
+
+/* Ubah QRIS statis menjadi dinamis dengan nominal tertentu */
+function qrisWithAmount(payload, amount){
+  const v = qrisValidate(payload);
+  if(!v.ok) return null;
+  const amt = Math.round(Number(amount) || 0);
+  if(amt <= 0) return v.raw;
+
+  /* Buang CRC lama */
+  const idx = v.raw.lastIndexOf('6304');
+  let body = v.raw.substring(0, idx);
+  const tags = qrisParse(body);
+  if(!tags) return null;
+
+  const rebuilt = [];
+  let amountInserted = false;
+  tags.forEach(function(t){
+    if(t.id === '01'){ rebuilt.push(qrisTLV('01', '12')); return; }   /* jadikan dinamis */
+    if(t.id === '54') return;                                          /* buang nominal lama */
+    /* Nominal harus berada sebelum tag 58 (country code) */
+    if(!amountInserted && parseInt(t.id, 10) > 54){
+      rebuilt.push(qrisTLV('54', String(amt)));
+      amountInserted = true;
+    }
+    rebuilt.push(qrisTLV(t.id, t.value));
+  });
+  if(!amountInserted) rebuilt.push(qrisTLV('54', String(amt)));
+
+  const withoutCRC = rebuilt.join('') + '6304';
+  return withoutCRC + qrisCRC(withoutCRC);
+}
+
+/* Kode unik deterministik dari nomor invoice (stabil saat cetak ulang) */
+function uniqueCodeFor(invNo){
+  const s = String(invNo || '');
+  if(!s) return 0;
+  let h = 2166136261;
+  for(let i = 0; i < s.length; i++){
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 16777619) >>> 0;
+  }
+  return (h % 899) + 1;   /* 1..899, hindari 0 */
+}
+
+/* Nominal yang harus ditransfer pelanggan */
+function getPaymentInfo(){
+  const s = readStoredSettings() || {};
+  const totals = getInvoiceTotals();
+  const dp = parseThousands(document.getElementById('dpInput').value) || 0;
+  const cicilan = paymentsTotal(invoicePayments);
+  const method = document.getElementById('payMethod').value;
+  const invNo = document.getElementById('invNo').value;
+  /* Yang ditagih = total dikurangi DP dan seluruh cicilan */
+  const paidSoFar = dp + cicilan;
+  const base = Math.max(0, totals.total - paidSoFar);
+  const useUnique = !!s.uniqueCode && method === 'Transfer' && base > 0;
+  const code = useUnique ? uniqueCodeFor(invNo) : 0;
+  return {
+    method: method,
+    base: base,
+    code: code,
+    payable: base + code,
+    isPartial: paidSoFar > 0,
+    banks: Array.isArray(s.banks) ? s.banks.filter(function(b){ return b && b.no; }) : [],
+    qris: s.qris || '',
+    note: s.payNote || ''
+  };
+}
+
+/* Render panel pembayaran pada invoice */
+function renderPaymentPanel(){
+  const info = getPaymentInfo();
+  const showBank = info.method === 'Transfer';
+  const showQris = info.method === 'QRIS';
+
+  /* Daftar rekening */
+  const list = document.getElementById('bankList');
+  if(list){
+    if(showBank && info.banks.length){
+      list.style.display = 'flex';
+      list.innerHTML = info.banks.map(function(b){
+        const bank = escapeHtml(b.bank || 'BANK');
+        return '<div class="bank-item">'
+          + '<div class="bank-logo">' + escapeHtml(String(b.bank || 'BANK').toUpperCase().slice(0, 6)) + '</div>'
+          + '<div class="bank-copy"><div class="bank-no">' + escapeHtml(b.no || '') + '</div>'
+          + '<div class="bank-an">' + bank + (b.an ? ' · a.n. ' + escapeHtml(b.an) : '') + '</div></div>'
+          + '<button class="bank-copy-btn" onclick="copyBankNo(this,\'' + escapeHtml(String(b.no || '').replace(/[^0-9]/g, '')) + '\')" title="Salin nomor rekening">'
+          + '<svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>'
+          + '</div>';
+      }).join('');
+    } else { list.style.display = 'none'; list.innerHTML = ''; }

@@ -1,0 +1,110 @@
+body.theme-glass .m2-calc-popover{background:rgba(8,27,30,.96);border-color:rgba(255,255,255,.18);box-shadow:0 20px 44px rgba(0,0,0,.55), inset 0 0 0 1px rgba(255,255,255,.06);backdrop-filter:blur(20px)}
+body.theme-glass .m2-calc-title{color:#3ee0c9}
+body.theme-glass .m2-calc-row label{color:#e2efee}
+body.theme-glass .m2-calc-row input{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.18);color:#f0f8f7}
+body.theme-glass .m2-calc-row input:focus{border-color:#3ee0c9;box-shadow:0 0 0 2px rgba(62,224,201,.18)}
+body.theme-glass .m2-calc-row .unit{color:#a7c6c2}
+body.theme-glass .m2-calc-result{background:rgba(46,207,186,.16)}
+body.theme-glass .m2-calc-result .r-label{color:#8ff0e0}
+body.theme-glass .m2-calc-result .r-value{color:#3ee0c9}
+body.theme-glass .m2-calc-btns .cancel{background:rgba(255,255,255,.1);color:#e6f2f0}
+.m2-calc-btn{border-style:solid!important;border-color:var(--navy)!important;color:var(--navy)!important;background:#fff!important}
+.m2-calc-btn:hover{background:rgba(17,47,82,.06)!important;transform:translateY(-1px)}
+body.theme-dark .m2-calc-btn{border-color:rgba(46,207,186,.65)!important;color:#3ee0c9!important;background:rgba(46,207,186,.1)!important}
+
+/* CSS PART 07/10 */
+body.theme-dark .m2-calc-btn:hover{background:rgba(46,207,186,.2)!important}
+body.theme-glass .m2-calc-btn{border-color:rgba(62,224,201,.6)!important;color:#3ee0c9!important;background:rgba(46,207,186,.12)!important;backdrop-filter:blur(8px)}
+body.theme-glass .m2-calc-btn:hover{background:rgba(46,207,186,.22)!important}
+
+td.harga-cell{
+  position:relative;padding:5px 16px !important;vertical-align:middle;
+}
+/* Tombol tier diposisikan absolut (bukan flex) agar input HARGA
+   memakai lebar penuh sel — dengan begitu angkanya benar-benar
+   sejajar rata tengah dengan judul kolom HARGA di atasnya. */
+.harga-main{display:block;width:100%}
+.harga-main input.harga{
+  width:100% !important;
+  border:0 !important;outline:0 !important;
+  background:transparent !important;box-shadow:none !important;
+  -webkit-appearance:none !important;appearance:none !important;
+  color:var(--ink);font:inherit;font-size:13px;
+  padding:0 18px !important;margin:0 !important;   /* simetris kiri-kanan */
+  line-height:1.3;text-align:center;
+}
+.harga-main input.harga:focus{background:var(--teal-pale) !important}
+.tier-btn{
+  position:absolute;right:6px;top:50%;transform:translateY(-50%);
+  width:20px;height:20px;
+  border:0 !important;outline:0 !important;
+  background:transparent !important;box-shadow:none !important;
+  color:#93a5ad;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;padding:0 !important;margin:0 !important;
+  transition:background .15s ease,color .15s ease;
+}
+.tier-btn:hover{background:var(--teal-pale) !important;color:var(--teal)}
+.tier-btn.active{background:transparent !important;color:var(--teal)}
+.tier-btn svg{width:14px;height:14px;display:block}
+
+tbody td:nth-child(5){border-bottom-color:transparent !important}
+tbody tr:last-child td:nth-child(5){border-bottom:none}
+
+/* ===== SCROLLBAR GAYA KAPSUL =====
+   Berlaku menyeluruh agar tidak ada scrollbar kotak yang tersisa.
+   Batang dibuat membulat penuh dengan border transparan sebagai
+   jarak, sehingga terlihat melayang di dalam jalurnya. */
+*::-webkit-scrollbar{width:10px;height:10px}
+*::-webkit-scrollbar-track{background:transparent;border-radius:999px}
+*::-webkit-scrollbar-thumb{
+  background:rgba(120,140,155,.35);
+  border-radius:999px;
+  border:2.5px solid transparent;
+  background-clip:padding-box;
+  transition:background .18s ease;
+}
+*::-webkit-scrollbar-thumb:hover{background:rgba(120,140,155,.6);background-clip:padding-box}
+*::-webkit-scrollbar-thumb:active{background:rgba(7,157,143,.7);background-clip:padding-box}
+*::-webkit-scrollbar-corner{background:transparent}
+*{scrollbar-width:thin;scrollbar-color:rgba(120,140,155,.35) transparent}
+/* Area kecil memakai batang lebih ramping */
+.cat-list::-webkit-scrollbar,.pl-list::-webkit-scrollbar,.snap-list::-webkit-scrollbar,
+.autocomplete-pop::-webkit-scrollbar,.cust-suggestions::-webkit-scrollbar{width:8px}
+.cat-list::-webkit-scrollbar-thumb,.pl-list::-webkit-scrollbar-thumb,.snap-list::-webkit-scrollbar-thumb,
+.autocomplete-pop::-webkit-scrollbar-thumb,.cust-suggestions::-webkit-scrollbar-thumb{border-width:2px}
+/* Scrollbar kapsul pada tema gelap & glass */
+body.theme-dark *::-webkit-scrollbar-thumb,
+body.theme-glass *::-webkit-scrollbar-thumb{background:rgba(46,207,186,.3);background-clip:padding-box}
+body.theme-dark *::-webkit-scrollbar-thumb:hover,
+body.theme-glass *::-webkit-scrollbar-thumb:hover{background:rgba(46,207,186,.55);background-clip:padding-box}
+body.theme-dark *::-webkit-scrollbar-thumb:active,
+body.theme-glass *::-webkit-scrollbar-thumb:active{background:rgba(62,224,201,.75);background-clip:padding-box}
+body.theme-dark *,body.theme-glass *{scrollbar-color:rgba(46,207,186,.3) transparent}
+
+body.theme-dark .harga-main input.harga{color:#e6efee}
+body.theme-dark .harga-main input.harga:focus{background:rgba(46,207,186,.14) !important}
+body.theme-dark .tier-btn{color:#7d9c99}
+body.theme-dark .tier-btn:hover{background:rgba(46,207,186,.18) !important;color:#3ee0c9}
+body.theme-dark .tier-btn.active{color:#3ee0c9}
+body.theme-glass .harga-main input.harga{color:#eaf5f4}
+body.theme-glass .harga-main input.harga:focus{background:rgba(46,207,186,.16) !important}
+body.theme-glass .tier-btn{color:#8eaaa8}
+body.theme-glass .tier-btn:hover{background:rgba(46,207,186,.2) !important;color:#3ee0c9}
+body.theme-glass .tier-btn.active{color:#3ee0c9}
+
+/* CSS PART 08/10 */
+.tier-popover{display:none;position:fixed;z-index:41;width:320px;padding:16px;border-radius:12px;background:#fff;border:1px solid #dfe8e8;box-shadow:0 20px 44px rgba(17,47,82,.22);animation:paperIn .2s ease both;box-sizing:border-box;max-height:85vh;overflow-y:auto}
+.tier-popover.open{display:block}
+.tier-hint{font-size:11px;line-height:1.55;color:var(--muted);margin-bottom:10px}
+.tier-hint b{color:var(--ink)}
+.tier-popover textarea{width:100%;min-height:92px;border:1px solid #dde5e6;border-radius:8px;padding:8px 10px;font:inherit;font-size:12px;color:var(--ink);background:#fbfcfc;outline:none;resize:vertical;line-height:1.5;margin-bottom:10px;box-sizing:border-box}
+.tier-popover textarea:focus{border-color:var(--teal);box-shadow:0 0 0 2px rgba(7,157,143,.12)}
+.tier-seg-label{font-size:10px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+.tier-seg{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px;padding:4px;border-radius:9px;background:rgba(17,47,82,.08);margin-bottom:10px}
+.tier-seg button{border:none;cursor:pointer;padding:6px 4px;border-radius:7px;background:transparent;color:var(--ink);font:inherit;font-size:11px;font-weight:800;transition:background .18s ease,color .18s ease,box-shadow .18s ease}
+.tier-seg button:hover{background:rgba(255,255,255,.6)}
+.tier-seg button.active{background:#fff;color:var(--teal);box-shadow:0 3px 8px rgba(17,47,82,.14)}
+.tier-preview{padding:9px 11px;border-radius:8px;background:var(--teal-pale);margin-bottom:10px;font-size:11px;line-height:1.5;color:var(--teal-dark);font-weight:700}
+.tier-preview b{font-weight:850}
+.tier-preview .warn{color:var(--red);font-weight:800}
+body.theme-dark .tier-popover,body.theme-glass .tier-popover{background:#0e2625;border-color:rgba(255,255,255,.15);box-shadow:0 20px 44px rgba(0,0,0,.6), inset 0 0 0 1px rgba(255,255,255,.06)}

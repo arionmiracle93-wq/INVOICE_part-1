@@ -1,0 +1,165 @@
+  const d = (obj && obj.data) ? obj.data : {};
+  const s = d.settings || {};
+  let extras = 0;
+  if(s && s.signature) extras++;
+  if(s && s.stamp) extras++;
+  return {
+    history: Array.isArray(d.history) ? d.history.length : 0,
+    customers: Array.isArray(d.customers) ? d.customers.length : 0,
+    catalog: ppJml(s && s.catalog), catalogRaw: (s && Array.isArray(s.catalog)) ? s.catalog.length : 0, catalogNisan: ppNisan(s && s.catalog),
+    extras: extras,
+    hasDraft: !!d.draft
+  };
+}
+
+function formatBackupDate(iso){
+  if(!iso) return '';
+  const d = new Date(iso);
+  if(isNaN(d.getTime())) return String(iso);
+  return d.toLocaleString('id-ID', {dateStyle:'medium', timeStyle:'short'});
+}
+
+/* Perbarui angka statistik data lokal di modal */
+function updateBackupStats(){
+  const st = backupStats(buildBackupObject());
+  const set = function(id, val){ const el = document.getElementById(id); if(el) el.textContent = val; };
+  set('statHistory', st.history);
+  set('statCustomers', st.customers);
+  set('statCatalog', st.catalog);
+  (function(){ try{ var el = document.getElementById('statCatalog'); if(!el) return; var sisa = st.catalogNisan || 0; var box = el.parentNode; if(!box) return; var tag = box.querySelector('.pp-tomb-note'); if(sisa > 0){ if(!tag){ tag = document.createElement('div');   tag.className = 'pp-tomb-note';   tag.style.cssText = 'font-size:10px;opacity:.7;margin-top:2px;line-height:1.3';   box.appendChild(tag); }   tag.textContent = '+' + sisa + ' bekas hapus (ikut disimpan agar penghapusan tersalin ke perangkat lain)'; } else if(tag){ tag.remove(); }}catch(e){} })();
+  set('statExtras', st.extras);
+
+  /* Tampilkan alamat asal data. localStorage terikat pada alamat
+     (protokol + host + port) — membuka aplikasi lewat file:// dan
+     lewat localhost menghasilkan penyimpanan yang BERBEDA. */
+  const org = document.getElementById('storOrigin');
+  if(org){
+    const asal = location.origin && location.origin !== 'null'
+      ? location.origin
+      : 'berkas lokal (file://)';
+    org.innerHTML = 'Data terikat pada alamat: <b>' + escapeHtml(asal) + '</b>';
+  }
+  /* Peringatan bila benar-benar kosong — hampir selalu karena
+     alamat berbeda, bukan karena data hilang. */
+  const warn = document.getElementById('emptyDataWarn');
+  if(warn){
+    const kosong = !st.history && !st.customers && !st.catalog && !st.extras;
+    warn.style.display = kosong ? '' : 'none';
+  }
+  const info = document.getElementById('backupLastInfo');
+  if(info){
+    const last = readLS(LAST_BACKUP_KEY);
+    info.textContent = last ? ('Backup terakhir: ' + formatBackupDate(last)) : 'Belum pernah membuat backup dari browser ini';
+  }
+  const ver = document.getElementById('appVersionText');
+  if(ver) ver.textContent = APP_VERSION;
+  renderStorageMeter();
+}
+
+function openBackup(){
+  try{ saveDraft(); }catch(e){}
+  cancelRestore();
+  updateBackupStats();
+  try{ initCloud(); }catch(e){}
+  document.getElementById('backupModal').classList.add('open');
+}
+function closeBackup(){
+  document.getElementById('backupModal').classList.remove('open');
+  cancelRestore();
+}
+
+/* ---------- Export ---------- */
+function exportFullBackup(){
+  try{ saveDraft(); }catch(e){}
+  const obj = buildBackupObject();
+  const st = backupStats(obj);
+  const n = new Date();
+  const p = function(v){ return String(v).padStart(2,'0'); };
+  const name = 'backup_pamulang_printing_' + n.getFullYear() + p(n.getMonth()+1) + p(n.getDate())
+    + '_' + p(n.getHours()) + p(n.getMinutes()) + '.json';
+  downloadBlob(new Blob([JSON.stringify(obj, null, 2)], {type:'application/json'}), name);
+  writeLS(LAST_BACKUP_KEY, new Date().toISOString());
+  updateBackupStats();
+  showToast('Backup lengkap diunduh · ' + st.history + ' invoice, ' + st.catalog + ' produk, ' + st.customers + ' pelanggan');
+}
+
+/* ---------- Baca file backup ---------- */
+function readBackupFile(file){
+  if(!file) return;
+  if(!/\.json$/i.test(file.name) && file.type !== 'application/json'){
+    showToast('File harus berformat .json', 'error');
+    return;
+  }
+  if(file.size > 12 * 1024 * 1024){
+    showToast('File backup terlalu besar (maks 12MB)', 'error');
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = function(e){
+    let obj = null;
+    try{ obj = JSON.parse(String(e.target.result).replace(/^\uFEFF/, '')); }
+    catch(err){ showToast('File backup rusak atau bukan JSON valid', 'error'); return; }
+
+    /* Toleransi: file invoice tunggal (bukan backup) */
+    if(obj && !obj.data && (obj.invNo || obj.rows)){
+      showToast('Ini file invoice tunggal, bukan backup. Gunakan menu Muat Invoice.', 'error');
+      return;
+    }
+    if(!obj || obj.format !== BACKUP_FORMAT || !obj.data){
+      showToast('Format backup tidak dikenali', 'error');
+      return;
+    }
+
+    pendingBackup = obj;
+    const st = backupStats(obj);
+    document.getElementById('restoreFileName').textContent = file.name;
+    document.getElementById('restoreFileDate').textContent = 'Dibuat: ' + (formatBackupDate(obj.exportedAt) || 'tidak diketahui')
+      + (st.hasDraft ? ' · berisi draft aktif' : '');
+    document.getElementById('preHistory').textContent = st.history;
+    document.getElementById('preCustomers').textContent = st.customers;
+    document.getElementById('preCatalog').textContent = st.catalog;
+    document.getElementById('preExtras').textContent = st.extras;
+    document.getElementById('restorePreview').classList.add('visible');
+    showToast('File backup terbaca. Pilih mode lalu klik Pulihkan.');
+  };
+  reader.readAsText(file, 'utf-8');
+}
+function handleBackupFile(evt){
+  const file = evt.target.files[0];
+  evt.target.value = '';
+  readBackupFile(file);
+}
+function cancelRestore(){
+  pendingBackup = null;
+  const box = document.getElementById('restorePreview');
+  if(box) box.classList.remove('visible');
+}
+function setRestoreMode(mode){
+  restoreMode = mode === 'replace' ? 'replace' : 'merge';
+  document.querySelectorAll('#backupModeSeg button').forEach(function(b){
+    b.classList.toggle('active', b.dataset.mode === restoreMode);
+  });
+  const desc = document.getElementById('restoreModeDesc');
+  if(!desc) return;
+  desc.innerHTML = restoreMode === 'replace'
+    ? '<b>Timpa Semua:</b> seluruh data di browser ini dihapus dan diganti dengan isi backup, termasuk pengaturan, tanda tangan, tema, dan draft. Cocok untuk pindah perangkat.'
+    : '<b>Gabungkan:</b> riwayat, pelanggan, dan katalog dari backup ditambahkan ke data yang ada. Pengaturan lokal dipertahankan bila sudah terisi. Draft yang sedang dikerjakan tidak diubah.';
+}
+
+/* ---------- Penggabungan data ---------- */
+function mergeHistory(localItems, incomingItems){
+  const out = [];
+  const seen = new Map();
+  const push = function(item){
+    if(!item) return;
+    const id = item.id || item.invNo || ('inv-' + Math.random());
+    const prev = seen.get(id);
+    if(!prev){ seen.set(id, item); out.push(item); return; }
+    /* Ambil yang paling baru berdasarkan savedAt */
+    const a = new Date(prev.savedAt || 0).getTime();
+    const b = new Date(item.savedAt || 0).getTime();
+    if(b > a){ out[out.indexOf(prev)] = item; seen.set(id, item); }
+  };
+  (Array.isArray(localItems) ? localItems : []).forEach(push);
+  (Array.isArray(incomingItems) ? incomingItems : []).forEach(push);
+  out.sort(function(a,b){ return new Date(b.savedAt || 0) - new Date(a.savedAt || 0); });

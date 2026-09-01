@@ -1,0 +1,167 @@
+/* ▸ RIWAYAT ───────────────────────────────────────────────── */
+/* Batas riwayat. Versi lama hanya 30 -> invoice lama terhapus diam-diam
+   setelah ~1 minggu pemakaian. Dinaikkan drastis, dengan penurunan
+   bertahap bila kuota localStorage benar-benar penuh. */
+const HISTORY_LIMIT = 500;
+
+function readHistory(){ try{ const raw = localStorage.getItem(HISTORY_KEY); const i = raw ? JSON.parse(raw) : []; return Array.isArray(i) ? i : []; }catch(err){ return []; } }
+
+function writeHistory(items){
+  const list = Array.isArray(items) ? items : [];
+  /* Coba simpan penuh; bila kuota penuh, pangkas bertahap agar
+     data terbaru tetap selamat dan pengguna diberi tahu. */
+  const steps = [HISTORY_LIMIT, 300, 200, 120, 60, 30];
+  for(let i = 0; i < steps.length; i++){
+    try{
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(list.slice(0, steps[i])));
+      if(i > 0){
+        showToast('Penyimpanan browser hampir penuh — riwayat dipangkas ke ' + steps[i] + ' invoice terbaru. Segera unduh backup.', 'error');
+      }
+      return true;
+    }catch(err){ /* lanjut ke batas yang lebih kecil */ }
+  }
+  showToast('Gagal menyimpan riwayat: penyimpanan browser penuh. Unduh backup lalu hapus data lama.', 'error');
+  return false;
+}
+
+/* ---------- Pemantauan kuota penyimpanan ---------- */
+function storageBytes(){
+  let total = 0;
+  try{
+    for(let i = 0; i < localStorage.length; i++){
+      const k = localStorage.key(i);
+      const v = localStorage.getItem(k) || '';
+      total += (k.length + v.length) * 2;   /* UTF-16 ≈ 2 byte/karakter */
+    }
+  }catch(e){}
+  return total;
+}
+function formatBytes(b){
+  if(b < 1024) return b + ' B';
+  if(b < 1024 * 1024) return (b / 1024).toFixed(1) + ' KB';
+  return (b / (1024 * 1024)).toFixed(2) + ' MB';
+}
+/* ── Peringatan dini penyimpanan ───────────────────────────────
+   localStorage tidak memberi tahu sisa ruangnya. Satu-satunya
+   cara mengetahui batas adalah dengan MENCOBA menulis — dan itu
+   sudah terlambat bila baru diketahui saat menyimpan invoice.
+
+   Karena itu pemakaian dipantau sendiri, lalu pengguna diingatkan
+   sebelum benar-benar penuh. Peringatan hanya muncul sekali per
+   sesi agar tidak mengganggu.
+   ───────────────────────────────────────────────────────────── */
+/* Memakai let (bukan const) agar nilainya bisa ditimpa sementara
+   lewat Console saat menguji peringatan penyimpanan. Aplikasi
+   sendiri tidak pernah mengubahnya. */
+let STORAGE_CAP = 5 * 1024 * 1024;     /* asumsi konservatif 5 MB */
+let storageWarned = null;              /* tingkat peringatan terakhir */
+
+function checkStorageHealth(){
+  const used = storageBytes();
+  const pct = (used / STORAGE_CAP) * 100;
+
+  /* Tampilkan bilah peringatan tetap di sidebar bila sudah tinggi */
+  const bar = document.getElementById('storageWarn');
+  if(bar){
+    if(pct >= 75){
+      bar.style.display = 'flex';
+      bar.className = 'storage-warn ' + (pct >= 90 ? 'crit' : '');
+      document.getElementById('storageWarnText').textContent =
+        (pct >= 90 ? 'Penyimpanan hampir penuh' : 'Penyimpanan ' + Math.round(pct) + '% terpakai');
+    } else bar.style.display = 'none';
+  }
+
+  /* Peringatan berupa dialog — hanya sekali per tingkat, per sesi */
+  const level = pct >= 90 ? 'crit' : (pct >= 75 ? 'warn' : null);
+  if(!level || storageWarned === level || storageWarned === 'crit') return;
+  storageWarned = level;
+
+  if(level === 'crit'){
+    if(confirm('PENYIMPANAN HAMPIR PENUH (' + Math.round(pct) + '%)\n\n'
+      + 'Bila penuh, invoice baru TIDAK dapat disimpan.\n\n'
+      + 'Unduh backup sekarang?\n'
+      + 'Setelah itu hapus riwayat lama lewat Backup & Restore.')){
+      try{ exportFullBackup(); }catch(e){ openBackup(); }
+    }
+  } else {
+    showToast('Penyimpanan browser ' + Math.round(pct) + '% terpakai — sebaiknya unduh backup.', 'error');
+  }
+}
+
+function renderStorageMeter(){
+  const fill = document.getElementById('storFill');
+  const txt = document.getElementById('storText');
+  const pctEl = document.getElementById('storPct');
+  if(!fill || !txt) return;
+  const used = storageBytes();
+  const pct = Math.min(100, (used / STORAGE_CAP) * 100);
+  fill.style.width = pct.toFixed(1) + '%';
+  fill.className = 'stor-fill' + (pct >= 85 ? ' crit' : (pct >= 60 ? ' warn' : ''));
+  txt.textContent = formatBytes(used) + ' terpakai';
+  if(pctEl) pctEl.textContent = pct.toFixed(0) + '%';
+}
+function recordHistory(data){
+  const items = readHistory();
+  const record = {
+    id: data.invNo || ('invoice-' + Date.now()),
+    invNo: data.invNo || 'Tanpa nomor',
+    invDate: data.invDate || '',
+    invDue: data.invDue || '',
+    custName: data.custName || 'Tanpa nama customer',
+    custPhone: data.custPhone || '',
+    totalAmount: data.totalAmount || 0,
+    savedAt: new Date().toISOString(),
+    data: data
+  };
+  const existing = items.findIndex(function(i){ return i.id === record.id; });
+  if(existing >= 0) items.splice(existing, 1);
+  items.unshift(record);
+  /* PENTING: hasil penulisan WAJIB diteruskan ke pemanggil.
+     Bila diabaikan, aplikasi bisa mengatakan "tersimpan" padahal
+     penyimpanan penuh dan datanya hilang. */
+  const ok = writeHistory(items);
+  recordCustomer(data.custName);
+  /* Simpan nomor WA agar bisa dipakai untuk penagihan nanti */
+  if(data.custPhone) saveCustomerPhone(data.custName, data.custPhone);
+  /* Data penting berubah -> jadwalkan backup cloud */
+  try{ markCloudDirty(); }catch(e){}
+  return ok;
+}
+function openHistory(){
+  const monthInput = document.getElementById('historyMonth');
+  if(monthInput && !monthInput.value){
+    const now = new Date();
+    monthInput.value = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0');
+  }
+  const search = document.getElementById('historySearch');
+  if(search) search.value = '';
+  setHistoryFilter('all');
+  renderHistory();
+  document.getElementById('historyModal').classList.add('open');
+}
+function closeHistory(){ document.getElementById('historyModal').classList.remove('open'); }
+/* Hitung nominal yang seharusnya ditransfer untuk satu record riwayat.
+   Dipakai agar pencarian mutasi bank bisa mencocokkan angka persis. */
+function historyPayable(item){
+  const d = item.data || {};
+  const total = Number(d.totalAmount || item.totalAmount || 0);
+  const dp = parseThousands(d.dp) || 0;
+  const cicilan = paymentsTotal(d.payments);
+  const paid = dp + cicilan;
+  const base = Math.max(0, total - paid);
+  const s = readStoredSettings() || {};
+  const useCode = !!s.uniqueCode && (d.payMethod || '') === 'Transfer' && base > 0;
+  const code = useCode ? uniqueCodeFor(d.invNo || item.invNo) : 0;
+  return {
+    base: base, code: code, payable: base + code,
+    lunas: !!d.lunas, dp: dp, cicilan: cicilan, paid: paid,
+    count: Array.isArray(d.payments) ? d.payments.length : 0
+  };
+}
+
+/* Ringkasan piutang: berapa uang yang belum masuk. Memakai nilai
+   dasar (tanpa kode unik) karena kode unik bukan pendapatan. */
+let historyFilter = 'all';
+function setHistoryFilter(f){
+  historyFilter = f;
+  document.querySelectorAll('.hf-btn').forEach(function(b){

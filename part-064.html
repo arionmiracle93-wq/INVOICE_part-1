@@ -1,0 +1,163 @@
+    function(r){ return '· ' + r.count + 'x'; }
+  );
+}
+
+function setReportMonth(key){ reportMonth = key; renderReport(); }
+function shiftReportMonth(delta){ setReportMonth(shiftMonthKey(reportMonth, delta)); }
+function openReport(){
+  if(!reportMonth) reportMonth = currentMonthKey();
+  renderReport();
+  document.getElementById('reportModal').classList.add('open');
+}
+function closeReport(){ document.getElementById('reportModal').classList.remove('open'); }
+document.getElementById('reportModal').addEventListener('mousedown', function(e){ if(e.target === this) closeReport(); });
+
+function exportReportCSV(){
+  const rep = collectReport(reportMonth);
+  if(!rep.count){ showToast('Tidak ada data pada bulan ini', 'error'); return; }
+  const prev = collectReport(shiftMonthKey(reportMonth, -1));
+  const L = [];
+  L.push(['LAPORAN BULANAN', monthLabel(reportMonth)]);
+  L.push([]);
+  L.push(['RINGKASAN']);
+  L.push(['Omzet', rep.omzet]);
+  L.push(['Jumlah invoice', rep.count]);
+  L.push(['Rata-rata per invoice', Math.round(rep.avg)]);
+  L.push(['Sudah dibayar', rep.terbayar]);
+  L.push(['Belum dibayar', rep.piutang]);
+  L.push(['Invoice lunas', rep.lunasCount]);
+  L.push(['Omzet bulan sebelumnya', prev.omzet]);
+  L.push([]);
+  L.push(['PRODUK TERLARIS']);
+  L.push(['Produk', 'Qty', 'Jumlah Transaksi', 'Total']);
+  rep.products.forEach(function(r){ L.push([r.name, r.qty, r.count, r.amount]); });
+  L.push([]);
+  L.push(['PELANGGAN TERATAS']);
+  L.push(['Pelanggan', 'Jumlah Invoice', 'Total']);
+  rep.customers.forEach(function(r){ L.push([r.name, r.count, r.amount]); });
+  L.push([]);
+  L.push(['RINCIAN INVOICE']);
+  L.push(['No Invoice','Tanggal','Customer','Total','Dibayar','Sisa','Status']);
+  rep.items.forEach(function(it){
+    const d = it.data || {};
+    const pay = historyPayable(it);
+    L.push([d.invNo||'', d.invDate||'', d.custName||'',
+            Number(d.totalAmount)||0, pay.lunas ? (Number(d.totalAmount)||0) : pay.paid,
+            pay.lunas ? 0 : pay.base, d.lunas ? 'LUNAS' : (pay.paid > 0 ? 'SEBAGIAN' : 'BELUM')]);
+  });
+  const csv = L.map(function(row){ return row.map(csvEscape).join(';'); }).join('\r\n');
+  downloadBlob(new Blob(['\uFEFF' + csv], {type:'text/csv;charset=utf-8;'}),
+               'laporan_' + reportMonth + '.csv');
+  showToast('Laporan ' + monthLabel(reportMonth) + ' diekspor');
+}
+
+/* ▸ PENGINGAT TAGIH ───────────────────────────────────────────
+   Menyusun pesan penagihan dari data invoice di riwayat, lalu
+   membukanya di WhatsApp. Pesan bisa diedit sebelum dikirim.
+   ─────────────────────────────────────────────────────────── */
+let billCtx = null;
+let billTone = 'halus';
+
+function setBillTone(t){
+  billTone = t;
+  document.querySelectorAll('#billToneSeg button').forEach(function(b){
+    b.classList.toggle('active', b.dataset.t === t);
+  });
+  buildBillMessage();
+}
+
+function buildBillMessage(){
+  if(!billCtx) return;
+  const d = billCtx.data || {};
+  const p = billCtx.pay;
+  const st = dueStatus(d.invDue, false);
+  const nama = String(d.custName || '').trim();
+  const sapaan = nama ? ('Bapak/Ibu ' + nama) : 'Bapak/Ibu';
+
+  /* Pembuka menyesuaikan nada & kondisi tempo */
+  let buka, tutup;
+  if(billTone === 'halus'){
+    buka = 'Selamat pagi/siang ' + sapaan + ', mohon maaf mengganggu waktunya.';
+    tutup = 'Apabila sudah melakukan pembayaran, mohon abaikan pesan ini. Terima kasih banyak atas kepercayaannya. 🙏';
+  } else if(billTone === 'tegas'){
+    buka = 'Yth. ' + sapaan + ',';
+    tutup = 'Mohon pembayaran segera diselesaikan. Terima kasih atas perhatiannya.';
+  } else {
+    buka = 'Halo ' + sapaan + ',';
+    tutup = 'Jika sudah dibayar, mohon abaikan pesan ini. Terima kasih. 🙏';
+  }
+
+  /* Inti pesan */
+  let inti;
+  if(st && st.kind === 'late'){
+    inti = billTone === 'tegas'
+      ? 'Kami informasikan bahwa invoice ' + (d.invNo || '-') + ' telah melewati jatuh tempo ' + Math.abs(st.days) + ' hari.'
+      : 'Kami ingin mengingatkan mengenai invoice ' + (d.invNo || '-') + ' yang jatuh temponya sudah lewat ' + Math.abs(st.days) + ' hari.';
+  } else if(st && st.kind === 'today'){
+    inti = 'Kami ingin mengingatkan bahwa invoice ' + (d.invNo || '-') + ' jatuh tempo hari ini.';
+  } else if(st){
+    inti = 'Kami ingin mengingatkan mengenai invoice ' + (d.invNo || '-') + ' yang akan jatuh tempo dalam ' + st.days + ' hari.';
+  } else {
+    inti = 'Kami ingin menginformasikan mengenai invoice ' + (d.invNo || '-') + ' yang belum kami terima pembayarannya.';
+  }
+
+  const lines = [buka, '', inti, ''];
+  lines.push('No. Invoice : ' + (d.invNo || '-'));
+  lines.push('Tanggal     : ' + (d.invDate || '-'));
+  if(d.invDue) lines.push('Jatuh tempo : ' + d.invDue);
+  lines.push('Total       : ' + formatRp(Number(d.totalAmount) || 0));
+  if(p.paid > 0){
+    if(p.dp > 0) lines.push('Uang muka (DP)     : ' + formatRp(p.dp));
+    if(p.count > 0) lines.push('Cicilan (' + p.count + 'x)      : ' + formatRp(p.cicilan));
+    lines.push('Total sudah dibayar: ' + formatRp(p.paid));
+    lines.push('SISA TAGIHAN : ' + formatRp(p.base));
+  }
+
+  /* Instruksi pembayaran */
+  const s = readStoredSettings() || {};
+  const banks = Array.isArray(s.banks) ? s.banks.filter(function(b){ return b && b.no; }) : [];
+  if((d.payMethod || 'Transfer') === 'Transfer' && banks.length){
+    lines.push('', 'Pembayaran dapat ditransfer ke:');
+    banks.forEach(function(b){
+      lines.push('· ' + (b.bank || 'Bank') + ' ' + (b.no || '') + (b.an ? ' a.n. ' + b.an : ''));
+    });
+    if(p.code){
+      lines.push('', 'Mohon transfer TEPAT sejumlah ' + formatRp(p.payable) + ' (termasuk kode unik ' + p.code + ') agar pembayaran cepat kami verifikasi.');
+    } else {
+      lines.push('', 'Nominal transfer: ' + formatRp(p.payable));
+    }
+  } else if((d.payMethod || '') === 'QRIS'){
+    lines.push('', 'Pembayaran dapat dilakukan via QRIS pada invoice yang kami kirimkan sebelumnya.');
+  }
+
+  lines.push('', tutup);
+  const nmToko = 'Pamulang Printing';
+  lines.push('', 'Hormat kami,', nmToko);
+
+  document.getElementById('billMessage').value = lines.join('\n');
+}
+
+function openBillReminder(index){
+  const item = readHistory()[index];
+  if(!item || !item.data){ showToast('Data invoice tidak ditemukan', 'error'); return; }
+  const p = historyPayable(item);
+  if(p.lunas){ showToast('Invoice ini sudah lunas', 'error'); return; }
+
+  billCtx = {data: item.data, pay: p, index: index};
+  billTone = 'halus';
+  document.querySelectorAll('#billToneSeg button').forEach(function(b){
+    b.classList.toggle('active', b.dataset.t === 'halus');
+  });
+
+  const d = item.data;
+  document.getElementById('billCustName').textContent = d.custName || 'Tanpa nama customer';
+  const st = dueStatus(d.invDue, false);
+  document.getElementById('billMeta').textContent =
+    (d.invNo || '-') + ' · Sisa ' + formatRp(p.base) + (st ? ' · ' + st.label : '');
+
+  /* Nomor WA: dari invoice, atau dari buku nomor pelanggan */
+  const saved = d.custPhone || lookupCustomerPhone(d.custName) || '';
+  document.getElementById('billPhone').value = saved;
+
+  buildBillMessage();
+  document.getElementById('billModal').classList.add('open');

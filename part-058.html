@@ -1,0 +1,150 @@
+  if(!bar || !val) return;
+  const nama = (document.getElementById('custName').value || '').trim();
+  const telp = (document.getElementById('custPhone').value || '').trim();
+  if(nama || telp){
+    bar.classList.add('filled');
+    val.textContent = nama ? (nama + (telp ? ' · ' + telp : '')) : telp;
+  } else {
+    bar.classList.remove('filled');
+    val.textContent = 'Belum diisi — klik untuk mengisi';
+  }
+}
+function openCustomerDialog(){
+  document.getElementById('customerModal').classList.add('open');
+  const el = document.getElementById('custName');
+  setTimeout(function(){ el.focus(); el.select(); }, 80);
+}
+function closeCustomerDialog(){
+  hideCustSuggestions();
+  document.getElementById('customerModal').classList.remove('open');
+  refreshCustomerBar();
+  scheduleAutosave();
+}
+function clearCustomerData(){
+  document.getElementById('custName').value = '';
+  document.getElementById('custPhone').value = '';
+  onCustPhoneInput();
+  refreshCustomerBar();
+  scheduleAutosave();
+  document.getElementById('custName').focus();
+}
+document.getElementById('customerModal').addEventListener('mousedown', function(e){
+  if(e.target === this) closeCustomerDialog();
+});
+/* Enter pada kolom nama -> lanjut ke nomor WA */
+document.getElementById('custName').addEventListener('keydown', function(e){
+  if(e.key === 'Enter' && !document.getElementById('custSuggestions').classList.contains('open')){
+    e.preventDefault();
+    document.getElementById('custPhone').focus();
+  }
+});
+/* Enter pada nomor WA -> tutup dialog */
+document.getElementById('custPhone').addEventListener('keydown', function(e){
+  if(e.key === 'Enter'){ e.preventDefault(); closeCustomerDialog(); }
+});
+
+/* Dipertahankan agar pemanggil lama tetap aman; kini juga
+   memperbarui tampilan bar customer di layar. */
+function onCustPhoneInput(){
+  const wrap = document.getElementById('custPhoneWrap');
+  const val = document.getElementById('custPhone').value;
+  if(wrap) wrap.classList.toggle('is-empty', !String(val || '').trim());
+  refreshCustomerBar();
+}
+/* Nama pelanggan berubah -> isi nomor WA dari buku nomor bila
+   kolomnya masih kosong (tidak menimpa isian manual) */
+function autofillCustomerPhone(name){
+  const el = document.getElementById('custPhone');
+  if(!el || el.value.trim()) return;
+  const found = lookupCustomerPhone(name);
+  if(found){ el.value = found; onCustPhoneInput(); }
+}
+document.getElementById('custName').addEventListener('input', function(){ showCustSuggestions(this.value); refreshCustomerBar(); });
+document.getElementById('custName').addEventListener('change', function(){ autofillCustomerPhone(this.value); refreshCustomerBar(); });
+document.addEventListener('mousedown', function(e){ if(!e.target.closest('.billto-field')) hideCustSuggestions(); });
+document.addEventListener('mousedown', function(e){ if(!e.target.closest('.product-field') && !e.target.closest('#productSuggestBox')) hideProductSuggestions(); });
+
+/* ▸ KALKULATOR M2 ─────────────────────────────────────────── */
+let m2CalcTarget = null;
+let lastM2Input = null;
+let m2CalcUnit = 'cm';
+function m2Factor(){ return m2CalcUnit === 'm' ? 1 : 100; }
+function setM2CalcUnit(unit){
+  m2CalcUnit = (unit === 'm') ? 'm' : 'cm';
+  document.querySelectorAll('.m2-calc-unit-btn').forEach(function(btn){ btn.classList.toggle('active', btn.dataset.unit === m2CalcUnit); });
+  document.getElementById('m2CalcUnitW').textContent = m2CalcUnit;
+  document.getElementById('m2CalcUnitH').textContent = m2CalcUnit;
+  updateM2CalcResult();
+}
+function parseCalcNum(v){ const s = String(v).trim(); if(!s) return 0; const num = parseFloat(s.replace(/\s/g,'').replace(',', '.')); return isNaN(num) ? 0 : num; }
+function updateM2CalcResult(){
+  const w = parseCalcNum(document.getElementById('m2CalcW').value);
+  const h = parseCalcNum(document.getElementById('m2CalcH').value);
+  const f = m2Factor();
+  const m2 = Math.round((w / f) * (h / f) * 100) / 100;
+  document.getElementById('m2CalcResult').textContent = m2 > 0 ? m2.toLocaleString('id-ID', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' m²' : '0,00 m²';
+}
+/* Pemicunya kini berupa ikon kecil di judul kolom, jadi popover
+   diratakan ke TENGAH ikon — bukan ke tepi kirinya — supaya tidak
+   terlihat melenceng jauh. */
+function positionPopoverNear(trigger){
+  const popover = document.getElementById('m2CalcPopover');
+  const rect = trigger.getBoundingClientRect();
+  const popH = popover.offsetHeight || 270;
+  const popW = popover.offsetWidth || 270;
+  const center = rect.left + rect.width / 2;
+  let left = Math.max(8, Math.min(center - popW / 2, window.innerWidth - popW - 8));
+  let top = rect.bottom + 8;
+  if(top + popH > window.innerHeight - 8) top = Math.max(8, rect.top - popH - 8);
+  popover.style.left = left + 'px';
+  popover.style.top = top + 'px';
+}
+function openM2Calc(e){
+  if(e) e.stopPropagation();
+  m2CalcTarget = lastM2Input;
+  if(!m2CalcTarget || !m2CalcTarget.closest('tr')){
+    const focused = document.activeElement;
+    if(focused && focused.classList && focused.classList.contains('m2')) m2CalcTarget = focused;
+    else { const lastRow = document.querySelector('#rows tr:last-child'); m2CalcTarget = lastRow ? lastRow.querySelector('.m2') : null; }
+  }
+  document.getElementById('m2CalcW').value = '';
+  document.getElementById('m2CalcH').value = '';
+  setM2CalcUnit('cm');
+  const trigger = e && e.currentTarget ? e.currentTarget
+    : (document.querySelector('.th-calc-btn') || document.querySelector('.add-row-btn'));
+  if(trigger) positionPopoverNear(trigger);
+  document.getElementById('m2CalcPopover').classList.add('open');
+  document.getElementById('m2CalcW').focus();
+}
+function closeM2Calc(){ document.getElementById('m2CalcPopover').classList.remove('open'); m2CalcTarget = null; }
+function applyM2Calc(){
+  const w = parseCalcNum(document.getElementById('m2CalcW').value);
+  const h = parseCalcNum(document.getElementById('m2CalcH').value);
+  const f = m2Factor();
+  const m2 = Math.round((w / f) * (h / f) * 100) / 100;
+  if(m2 <= 0){ showToast('Masukkan lebar dan panjang terlebih dahulu', 'error'); return; }
+  if(m2CalcTarget){
+    m2CalcTarget.value = m2.toLocaleString('id-ID', {minimumFractionDigits:2, maximumFractionDigits:2}).replace('.', ',');
+    formatM2Input(m2CalcTarget);
+    recalcRow(m2CalcTarget.closest('tr'));
+    scheduleAutosave();
+    showToast('Luas ' + m2 + ' m² diterapkan');
+  }
+  closeM2Calc();
+}
+document.getElementById('m2CalcW').addEventListener('input', updateM2CalcResult);
+document.getElementById('m2CalcH').addEventListener('input', updateM2CalcResult);
+
+/* ▸ STEMPEL LUNAS ─────────────────────────────────────────── */
+function setLunas(active){
+  document.getElementById('lunasStamp').classList.toggle('active', active);
+  const btn = document.querySelector('.sidebar .btn-secondary .icon-red');
+  /* Update button text */
+  const lunasBtn = document.querySelectorAll('.sidebar .btn')[2];
+  if(lunasBtn){
+    const txt = lunasBtn.childNodes[lunasBtn.childNodes.length - 1];
+    if(txt) txt.textContent = active ? ' Sembunyikan Lunas ' : ' Tandai Lunas ';
+  }
+}
+function toggleLunas(){
+  setLunas(!document.getElementById('lunasStamp').classList.contains('active'));

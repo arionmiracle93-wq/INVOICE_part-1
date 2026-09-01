@@ -1,0 +1,129 @@
+
+/* Simpan katalog ke pengaturan. Mengembalikan false bila gagal,
+   dengan pesan yang jelas — bukan gagal diam-diam. */
+function persistCatalog(items, fromSync){
+  productCatalog = items;
+  try{
+    const s = readStoredSettings() || {};
+    s.catalog = items;
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(s));
+    /* Perubahan dari pengguna langsung dikirim ke server supaya
+       PC lain tidak perlu menunggu putaran 15 detik berikutnya.
+       Perubahan yang BERASAL dari sinkronisasi tidak dikirim
+       ulang — itu akan menimbulkan putaran tanpa henti. */
+    if(!fromSync && syncEnabled()){
+      setTimeout(function(){ syncCatalogNow(true); }, 120);
+    }
+    /* Pastikan benar-benar tersimpan — bukan sekadar tidak error.
+       Kegagalan diam-diam di sini menyebabkan gambar "hilang"
+       setelah halaman dimuat ulang. */
+    const back = readStoredSettings();
+    const savedImgs = (back && Array.isArray(back.catalog))
+      ? back.catalog.filter(function(p){ return p && p.image; }).length : 0;
+    const wantImgs = items.filter(function(p){ return p && p.image; }).length;
+    if(wantImgs > 0 && savedImgs < wantImgs){
+      showToast('Gambar tidak tersimpan ke penyimpanan browser. Kemungkinan penyimpanan penuh — periksa Backup & Restore.', 'error');
+      console.warn('persistCatalog: gambar diharapkan', wantImgs, 'tersimpan', savedImgs);
+    }
+    try{ markCloudDirty(); }catch(e){}
+    try{ checkStorageHealth(); }catch(e){}
+    return true;
+  }catch(err){
+    console.error('Gagal menyimpan katalog:', err);
+    const penuh = err && (err.name === 'QuotaExceededError' || /quota/i.test(String(err)));
+    alert(penuh
+      ? 'PENYIMPANAN BROWSER PENUH\n\n'
+        + 'Produk tidak dapat disimpan karena ruang habis — biasanya\n'
+        + 'karena gambar produk, logo, tanda tangan, atau riwayat.\n\n'
+        + 'Langkah:\n'
+        + '  1. Buka Backup & Restore, unduh backup\n'
+        + '  2. Hapus riwayat lama\n'
+        + '  3. Kurangi gambar produk bila perlu'
+      : 'Gagal menyimpan produk.\n\n' + String(err && err.message || err));
+    return false;
+  }
+}
+
+/* ---------- Kelola kategori ---------- */
+function openCategoryManager(){
+  const cats = getCategories();
+  const nama = prompt('KELOLA KATEGORI\n\n'
+    + 'Tulis satu kategori per baris.\n'
+    + 'Hapus barisnya untuk menghapus kategori.\n\n'
+    + 'Kategori yang masih dipakai produk tetap tampil di galeri\n'
+    + 'meski dihapus dari daftar ini.',
+    cats.join('\n'));
+  if(nama === null) return;
+  const list = nama.split('\n').map(function(x){ return x.trim(); }).filter(Boolean);
+  /* Buang duplikat, tidak peka huruf besar/kecil */
+  const seen = new Set(); const out = [];
+  list.forEach(function(c){
+    const k = c.toLowerCase();
+    if(!seen.has(k)){ seen.add(k); out.push(c); }
+  });
+  if(!saveCategories(out)) return;
+  renderGallery();
+  showToast(out.length + ' kategori tersimpan');
+}
+
+/* Saat layar penuh, tidak ada area kosong di luar jendela —
+   jadi penutup lewat klik luar hanya berlaku di mode jendela. */
+document.getElementById('galleryModal').addEventListener('mousedown', function(e){
+  if(e.target === this && !this.classList.contains('full')) closeGallery();
+});
+document.getElementById('sqlModal').addEventListener('mousedown', function(e){
+  if(e.target === this) closeSqlModal();
+});
+/* F11 sering diambil alih browser, jadi dipakai F saat galeri
+   terbuka dan fokus tidak sedang di kotak isian. */
+document.addEventListener('keydown', function(e){
+  const gal = document.getElementById('galleryModal');
+  if(!gal.classList.contains('open')) return;
+  if(document.getElementById('productFormModal').classList.contains('open')) return;
+  const t = e.target;
+  if(t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT')) return;
+  if(e.key === 'f' || e.key === 'F'){ e.preventDefault(); toggleGalleryFull(); }
+});
+document.getElementById('productFormModal').addEventListener('mousedown', function(e){ if(e.target === this) closeProductForm(); });
+
+function csvEscape(value){ return '"' + String(value == null ? '' : value).replace(/"/g, '""') + '"'; }
+function downloadBlob(blob, filename){
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+function exportCatalogCSV(){
+  /* Bila modal Pengaturan terbuka, ekspor apa yang sedang diedit */
+  const modalOpen = document.getElementById('settingsModal').classList.contains('open');
+  if(modalOpen && catalogTextMode) catalogDraft = parseCatalogText(document.getElementById('setCatalog').value);
+  const items = modalOpen ? readCatalogDraft() : getCatalog();
+  if(!items.length){ showToast('Katalog produk masih kosong', 'error'); return; }
+  /* Gambar tidak diekspor ke CSV (terlalu besar) — pakai Backup
+     & Restore bila ingin memindahkannya beserta gambar. */
+  const lines = [['Nama Produk','Keterangan','Harga','Harga Bertingkat','Kategori'].join(';')];
+  items.forEach(function(item){
+    lines.push([csvEscape(item.name), csvEscape(item.description || ''), csvEscape(item.harga || ''),
+                csvEscape(item.tiers || ''), csvEscape(item.category || '')].join(';'));
+  });
+  downloadBlob(new Blob(['\uFEFF' + lines.join('\r\n')], {type:'text/csv;charset=utf-8;'}), 'katalog_produk.csv');
+  showToast(items.length + ' produk diekspor ke CSV');
+}
+
+const SAMPLE_CATALOG = [
+  {name:'Kartu Nama Art Carton 260gr', description:'1 box isi 100 pcs - full color 2 sisi', harga:'45000', tiers:'2=42000;5=39000;10=35000'},
+  {name:'Brosur A5 Art Paper 150gr', description:'Full color 2 sisi - potong jadi', harga:'1500', tiers:'100=1200;500=950;1000=800'},
+  {name:'Poster A3 Art Paper 210gr', description:'Full color 1 sisi', harga:'7000', tiers:'10=6000;50=5000;100=4200'},
+  {name:'Undangan Softcover', description:'Include amplop dan cetak nama tamu', harga:'4500', tiers:'50=4000;100=3500;300=3000'},
+  {name:'Yasin Hardcover 200 Halaman', description:'Cetak nama + hard cover laminasi', harga:'22000', tiers:'50=20000;100=18500;250=17000'},
+  {name:'Kalender Dinding 12 Lembar', description:'Art paper 150gr + spiral kawat', harga:'28000', tiers:'25=25000;100=22000;500=19500'},
+  {name:'ID Card PVC + Tali', description:'Ukuran standar 86x54mm 2 sisi', harga:'12000', tiers:'10=10000;50=8500;100=7500'},
+  {name:'Amplop Kop Surat', description:'Ukuran 110x230mm - 1 warna', harga:'1200', tiers:'250=1000;1000=850'},
+  {name:'X-Banner 60x160', description:'Flexi korea + tiang X', harga:'75000', tiers:'2=70000;5=65000'},
+  {name:'Roll Up Banner 85x200', description:'Albatros + stand roll up', harga:'285000', tiers:'2=270000;5=255000'},
+  {name:'Nota NCR 2 Ply', description:'1 buku 50 set - ukuran 1/3 folio', harga:'18000', tiers:'mode=progresif;10=16000;50=14000'},
+  {name:'Kaos Sablon DTF Cotton 30s', description:'Sablon DTF - all size', harga:'85000', tiers:'mode=progresif;6=78000;24=72000;100=65000'},
+  {name:'Mug Custom Keramik', description:'Full color + box mika', harga:'35000', tiers:'mode=progresif;12=30000;48=27000'},
+  {name:'Pin Peniti 58mm', description:'Full color laminasi doff', harga:'5000', tiers:'mode=progresif;50=4200;200=3600'},
+  {name:'Banner Flexi China 280gr', description:'Outdoor - hitung per m2 - include mata ayam', harga:'25000', tiers:'basis=m2;5=23000;20=21000;50=19000'},

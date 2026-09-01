@@ -1,0 +1,134 @@
+              <div class="t-row sisa"><span class="t-label">SISA</span><span id="sisaOut">Rp 0</span></div>
+              <div class="t-row" id="uniqueRow" style="display:none"><span class="t-label">KODE UNIK</span><span id="uniqueOut">0</span></div>
+              <div class="t-row sisa" id="transferRow" style="display:none"><span class="t-label">TOTAL TRANSFER</span><span id="transferOut">Rp 0</span></div>
+            </div>
+            <button class="pay-log-btn" onclick="openPaymentLedger()">
+              <svg viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+              <span id="payLogBtnText">Catat Pembayaran</span>
+            </button>
+          </div>
+          </div>
+
+          <div class="paylog-block" id="payLogBlock">
+            <div class="paylog-eyebrow">RIWAYAT PEMBAYARAN</div>
+            <table class="paylog-table">
+              <thead><tr><th style="width:22%">TANGGAL</th><th style="width:22%">METODE</th><th>KETERANGAN</th><th class="r" style="width:24%">JUMLAH</th></tr></thead>
+              <tbody id="payLogRows"></tbody>
+            </table>
+            <div class="paylog-sum"><span id="payLogSumLabel">Total dibayar</span><span id="payLogSumVal">Rp 0</span></div>
+          </div>
+
+          <div class="terms-block">
+            <div class="terms-eyebrow">SYARAT &amp; KETENTUAN</div>
+            <ul class="terms-list" id="termsList" contenteditable="true" spellcheck="false" autocorrect="off">
+              <li>Pembatalan order karena kesalahan kami, maka kami bertanggung jawab sepenuhnya</li>
+              <li>Barang yang sudah di ACC tidak dapat ditukar atau dikembalikan</li>
+              <li>Pembayaran lunas (cash/transfer) untuk DP minimal 50% dari harga total</li>
+              <li>Pengambilan max. 1 minggu, lebih dari itu bukan tanggung jawab kami</li>
+            </ul>
+          </div>
+
+          <div class="signature-block" id="signatureBlock">
+            <div class="sig-item" id="companySigBox" style="display:none">
+              <div class="sig-label">Hormat kami,</div>
+              <img class="sig-img" id="companySigImg" alt="Tanda tangan">
+              <div class="sig-name">Pamulang Printing</div>
+            </div>
+            <div class="sig-item" id="stampBox" style="display:none">
+              <img class="sig-stamp-img" id="stampImg" alt="Stempel">
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- SETTINGS MODAL -->
+<div class="modal-backdrop" id="settingsModal">
+  <div class="modal">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title">Pengaturan</div>
+        <div class="modal-sub">Informasi Perubahan disimpan permanen di browser ini</div>
+      </div>
+      <button class="modal-close" onclick="closeSettings()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <!-- Tab: setiap kategori punya panelnya sendiri agar tidak
+         perlu menggulir panjang dalam satu halaman. -->
+    <div class="tabs" role="tablist">
+      <button class="tab active" data-tab="usaha" onclick="setSettingsTab('usaha')" role="tab">
+        <svg viewBox="0 0 24 24"><path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-4"/></svg>
+        <span class="tab-text">Info Usaha</span>
+      </button>
+      <button class="tab" data-tab="katalog" onclick="setSettingsTab('katalog')" role="tab">
+        <svg viewBox="0 0 24 24"><path d="M20.59 13.41 13.42 20.6a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+        <span class="tab-text">Katalog</span>
+        <span class="tab-badge" id="tabCatalogCount">0</span>
+      </button>
+      <button class="tab" data-tab="bayar" onclick="setSettingsTab('bayar')" role="tab">
+        <svg viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+        <span class="tab-text">Pembayaran</span>
+      </button>
+      <button class="tab" data-tab="tampilan" onclick="setSettingsTab('tampilan')" role="tab">
+        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+        <span class="tab-text">Tampilan</span>
+      </button>
+      <button class="tab" data-tab="dokumen" onclick="setSettingsTab('dokumen')" role="tab">
+        <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        <span class="tab-text">Dokumen</span>
+      </button>
+    </div>
+
+    <div class="modal-body">
+
+      <!-- ══ TAB: INFO USAHA ══ -->
+      <div class="tab-panel active" data-panel="usaha">
+        <div class="sec-head">
+          <svg viewBox="0 0 24 24"><path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-4"/></svg>
+          Identitas Usaha <span class="line"></span>
+        </div>
+        <div class="field-grid">
+          <div class="field"><label>Alamat Baris 1</label><input id="setAddr1"></div>
+          <div class="field"><label>Alamat Baris 2</label><input id="setAddr2"></div>
+          <div class="field"><label>Email</label><input id="setEmail"></div>
+          <div class="field"><label>WhatsApp</label><input id="setWa"></div>
+        </div>
+
+        <div class="sec-head">
+          <svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          Syarat &amp; Ketentuan <span class="line"></span>
+        </div>
+        <div class="field">
+          <textarea id="setTerms" rows="5"></textarea>
+          <div class="hint">Tulis satu poin per baris. Baris kosong akan diabaikan.</div>
+        </div>
+      </div>
+
+      <!-- ══ TAB: KATALOG ══ -->
+      <div class="tab-panel" data-panel="katalog">
+        <div class="field" style="margin:0">
+
+        <div class="cat-toolbar">
+          <button class="modal-btn primary" onclick="addCatalogItem()">+ Tambah Produk</button>
+          <button class="modal-btn" onclick="document.getElementById('importCSVFile').click()">Import CSV</button>
+          <input type="file" id="importCSVFile" accept=".csv" style="display:none" onchange="importCatalogCSV(event)">
+          <button class="modal-btn" onclick="exportCatalogCSV()">Export CSV</button>
+          <span class="spacer"></span>
+          <button class="cat-mode" id="catModeBtn" onclick="toggleCatalogMode()" title="Beralih ke mode teks">Mode Teks</button>
+        </div>
+
+        <div id="catVisual">
+          <input class="cat-search" id="catSearch" placeholder="Cari produk..." autocomplete="off" oninput="renderCatalogEditor()">
+          <div class="cat-head">
+            <div>Nama Produk</div>
+            <div>Keterangan</div>
+            <div class="h-price">Harga</div>
+            <div>Bertingkat</div>
+            <div></div>
+          </div>
+          <div class="cat-list" id="catList"></div>
+          <div class="cat-foot">
+            <span class="cat-count" id="catCount"></span>
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+              <button class="modal-btn" style="padding:6px 10px;font-size:11px" onclick="sortCatalogItems()">Urutkan A–Z</button>

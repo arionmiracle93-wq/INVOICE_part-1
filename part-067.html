@@ -1,0 +1,178 @@
+  if(!data.rows || !data.rows.some(function(r){ return r.produk || r.qty; })){
+    showToast('Invoice masih kosong. Tambahkan produk terlebih dahulu.', 'error');
+    return;
+  }
+
+  try{ saveDraft(); }catch(e){}
+
+  /* Paksa template cetak mengikuti tema Light apa pun tema aktif */
+  document.body.classList.add('printing');
+
+  /* Beri jeda singkat agar UI sempat menutup popover & repaint */
+  setTimeout(function(){
+    window.print();
+    setTimeout(function(){
+      document.body.classList.remove('printing');
+      ensureTableToolbarVisible();
+    }, 300);
+  }, 150);
+}
+
+/* ENHANCED: Download Invoice PDF */
+async function downloadInvoicePDF(){
+  const data = gatherInvoiceData();
+  if(!data.rows || !data.rows.some(function(r){ return r.produk || r.qty; })){
+    showToast('Invoice masih kosong. Tambahkan produk terlebih dahulu.', 'error');
+    return;
+  }
+
+  showExportOverlay('Membuat PDF...', 'Invoice sedang di-render menjadi PDF.');
+
+  try{
+    const pdf = await generateInvoicePDF();
+    const filename = 'Invoice_' + sanitizeFilename(data.invNo || data.custName || 'PamulangPrinting') + '.pdf';
+    pdf.save(filename);
+    showToast('PDF invoice berhasil diunduh');
+  } catch(err){
+    console.error('PDF generation error:', err);
+    showToast('Gagal membuat PDF. Coba lagi.', 'error');
+  } finally {
+    hideExportOverlay();
+    ensureTableToolbarVisible();
+  }
+}
+
+
+/* ▸ WHATSAPP ──────────────────────────────────────────────── */
+async function sendWhatsApp(){
+  const phone = formatWhatsAppNumber(document.getElementById('waLine').value);
+  if(!phone || phone.length < 10){
+    alert('Nomor WhatsApp belum valid. Perbarui nomor di menu Pengaturan.');
+    return;
+  }
+
+  const data = gatherInvoiceData();
+  const totals = getInvoiceTotals();
+
+  if(!data.rows || !data.rows.some(function(r){ return r.produk || r.qty; })){
+    showToast('Invoice masih kosong. Tambahkan produk terlebih dahulu.', 'error');
+    return;
+  }
+
+  /* Siapkan pesan teks */
+  const lines = data.rows.filter(function(r){ return r.produk || r.keterangan || r.qty || r.harga; }).map(function(row, index){
+    const m2 = row.m2 ? ', ' + row.m2 + ' m2' : '';
+    const qty = row.qty ? ' x ' + row.qty : '';
+    const harga = row.unitPrice ? ' @ ' + formatRp(row.unitPrice) : (row.harga ? ' @ Rp ' + row.harga : '');
+    const jml = row.amount ? ' = ' + formatRp(row.amount) : '';
+    return (index + 1) + '. ' + (row.produk || 'Produk') + m2 + qty + harga + jml;
+  });
+
+  /* Blok instruksi pembayaran */
+  const pay = getPaymentInfo();
+  const payLines = [];
+  if(pay.payable > 0 && pay.method === 'Transfer'){
+    payLines.push('', '--- CARA PEMBAYARAN ---');
+    if(pay.banks.length){
+      pay.banks.forEach(function(b){
+        payLines.push((b.bank || 'Bank') + ' : ' + (b.no || '') + (b.an ? ' a.n. ' + b.an : ''));
+      });
+    }
+    payLines.push(pay.isPartial ? 'Sisa yang harus dibayar: ' + formatRp(pay.payable)
+                                : 'Nominal transfer: ' + formatRp(pay.payable));
+    if(pay.code) payLines.push('PENTING: transfer TEPAT sampai 3 angka terakhir (kode unik ' + pay.code + ') agar cepat kami verifikasi.');
+    if(pay.note) payLines.push(pay.note);
+  } else if(pay.payable > 0 && pay.method === 'QRIS'){
+    payLines.push('', '--- CARA PEMBAYARAN ---',
+      'Scan QRIS pada invoice terlampir. Nominal ' + formatRp(pay.payable) + ' sudah tertanam di QR.');
+    if(pay.note) payLines.push(pay.note);
+  }
+
+  const dueSt = dueStatus(data.invDue, !!data.lunas);
+  const message = ['Halo, berikut ringkasan invoice ' + (data.invNo || '-') + '.',
+    'Customer: ' + (data.custName || '-'),
+    'Tanggal: ' + (data.invDate || '-')]
+    .concat(data.invDue ? ['Jatuh tempo: ' + data.invDue + (dueSt && !data.lunas ? ' (' + dueSt.label + ')' : '')] : [])
+    .concat(['', 'Detail pesanan:'])
+    .concat(lines.length ? lines : ['- Belum ada detail produk'])
+    .concat(['', 'Subtotal: ' + formatRp(totals.subtotal)])
+    .concat(totals.discountRate ? ['Diskon (' + totals.discountRate + '%): - ' + formatRp(totals.discountAmount)] : [])
+    .concat(totals.taxRate ? ['PPN (' + totals.taxRate + '%): ' + formatRp(totals.taxAmount)] : [])
+    .concat(['Total: ' + formatRp(totals.total)])
+    .concat(parseThousands(data.dp) ? ['DP: ' + formatRp(parseThousands(data.dp))] : [])
+    .concat(paymentsTotal(data.payments) ? ['Cicilan (' + data.payments.length + 'x): ' + formatRp(paymentsTotal(data.payments))] : [])
+    .concat(['Metode pembayaran: ' + (data.payMethod || '-')])
+    .concat(payLines)
+    .join('\n');
+
+  /* Coba gunakan Web Share API untuk mengirim file langsung */
+  if(navigator.share && navigator.canShare){
+    showExportOverlay('Menyiapkan Invoice...', 'Membuat file PDF untuk dikirim via WhatsApp.');
+    try{
+      const pdf = await generateInvoicePDF();
+      const pdfBlob = pdf.output('blob');
+      const filename = 'Invoice_' + sanitizeFilename(data.invNo || 'PP') + '.pdf';
+      const file = new File([pdfBlob], filename, {type: 'application/pdf'});
+
+      const shareData = {
+        title: 'Invoice ' + (data.invNo || 'Pamulang Printing'),
+        text: message,
+        files: [file]
+      };
+
+      hideExportOverlay();
+
+      if(navigator.canShare(shareData)){
+        await navigator.share(shareData);
+        showToast('Invoice dibagikan via WhatsApp');
+        return;
+      }
+    } catch(err){
+      hideExportOverlay();
+      /* User cancel atau error, lanjut ke fallback */
+      if(err.name === 'AbortError'){
+        showToast('Pembagian dibatalkan');
+        return;
+      }
+      console.warn('Web Share API with file failed, falling back:', err);
+    }
+  }
+
+  /* Fallback: Download PDF + buka WhatsApp */
+  showExportOverlay('Menyiapkan Invoice...', 'Membuat file PDF, lalu membuka WhatsApp.');
+  try{
+    const pdf = await generateInvoicePDF();
+    const filename = 'Invoice_' + sanitizeFilename(data.invNo || 'PP') + '.pdf';
+    pdf.save(filename);
+    hideExportOverlay();
+
+    showToast('PDF terunduh. Silakan lampirkan manual di WhatsApp.');
+
+    /* Buka WhatsApp dengan pesan teks */
+    setTimeout(function(){
+      window.open('https://wa.me/' + phone + '?text=' + encodeURIComponent(message), '_blank', 'noopener');
+    }, 800);
+  } catch(err){
+    hideExportOverlay();
+    console.error('PDF generation failed, opening WhatsApp with text only:', err);
+    showToast('Gagal membuat PDF. Mengirim teks saja.');
+    window.open('https://wa.me/' + phone + '?text=' + encodeURIComponent(message), '_blank', 'noopener');
+  } finally {
+    ensureTableToolbarVisible();
+  }
+}
+
+function formatWhatsAppNumber(value){
+  let number = String(value || '').replace(/\D/g,'');
+  if(number.indexOf('0') === 0) number = '62' + number.slice(1);
+  return number;
+}
+
+/* ▸ SIMPAN FILE & INVOICE BARU ────────────────────────────── */
+function downloadJSON(data, filename){
+  downloadBlob(new Blob([JSON.stringify(data, null, 2)], {type:'application/json'}), filename);
+}
+/* Konfirmasi status lunas saat menyimpan invoice.
+   ---------------------------------------------------------------
+   Berlaku untuk SEMUA metode (Cash, Transfer, QRIS). Memilih
+   metode hanya menandakan CARA bayarnya, belum tentu sudah

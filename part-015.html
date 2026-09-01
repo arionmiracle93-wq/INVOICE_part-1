@@ -1,0 +1,93 @@
+body.printing.theme-dark .totals-box,body.printing.theme-glass .totals-box,
+body.printing.theme-dark .pay-method-card,body.printing.theme-glass .pay-method-card,
+body.printing.theme-dark .terms-block,body.printing.theme-glass .terms-block,
+body.printing.theme-dark .paylog-block,body.printing.theme-glass .paylog-block,
+body.printing.theme-dark .bank-item,body.printing.theme-glass .bank-item{
+  background:#fff!important;border-color:#e0e7e8!important;box-shadow:none!important;backdrop-filter:none!important;
+}
+body.printing.theme-dark .t-row,body.printing.theme-glass .t-row{border-bottom-color:#e8eeee!important;color:#15283d!important}
+body.printing.theme-dark .t-row.total,body.printing.theme-glass .t-row.total{background:#112f52!important;color:#fff!important}
+body.printing.theme-dark .t-row.total .t-label,body.printing.theme-glass .t-row.total .t-label,
+body.printing.theme-dark .t-row.total #totalOut,body.printing.theme-glass .t-row.total #totalOut{color:#fff!important}
+body.printing.theme-dark .t-row.sisa,body.printing.theme-glass .t-row.sisa,
+body.printing.theme-dark .t-row.paid-row,body.printing.theme-glass .t-row.paid-row{background:#eef8f7!important;color:#079d8f!important}
+body.printing.theme-dark .t-row.paid-row .t-label,body.printing.theme-glass .t-row.paid-row .t-label{color:#079d8f!important}
+body.printing.theme-dark .meta-row input,body.printing.theme-glass .meta-row input{background:transparent!important;color:#15283d!important;box-shadow:none!important}
+body.printing.theme-dark .company-name .navy-text,body.printing.theme-glass .company-name .navy-text,
+body.printing.theme-dark .billto input,body.printing.theme-glass .billto input,
+body.printing.theme-dark td.jumlah,body.printing.theme-glass td.jumlah,
+body.printing.theme-dark .terms-list li,body.printing.theme-glass .terms-list li,
+body.printing.theme-dark tbody input,body.printing.theme-glass tbody input,
+body.printing.theme-dark tbody textarea,body.printing.theme-glass tbody textarea,
+body.printing.theme-dark .contact input,body.printing.theme-glass .contact input,
+body.printing.theme-dark .meta-row,body.printing.theme-glass .meta-row,
+body.printing.theme-dark .adjustment-row,body.printing.theme-glass .adjustment-row,
+body.printing.theme-dark .adjustment-output,body.printing.theme-glass .adjustment-output,
+body.printing.theme-dark .paylog-table td,body.printing.theme-glass .paylog-table td,
+body.printing.theme-dark .bank-no,body.printing.theme-glass .bank-no,
+body.printing.theme-dark .sig-item .sig-name,body.printing.theme-glass .sig-item .sig-name{color:#15283d!important}
+body.printing.theme-dark .inv-title,body.printing.theme-glass .inv-title,
+body.printing.theme-dark .company-name .teal-text,body.printing.theme-glass .company-name .teal-text,
+body.printing.theme-dark .terms-eyebrow,body.printing.theme-glass .terms-eyebrow,
+body.printing.theme-dark .billto label,body.printing.theme-glass .billto label,
+body.printing.theme-dark .paylog-eyebrow,body.printing.theme-glass .paylog-eyebrow,
+body.printing.theme-dark .paylog-sum,body.printing.theme-glass .paylog-sum,
+body.printing.theme-dark .bill-icon,body.printing.theme-glass .bill-icon,
+body.printing.theme-dark .pay-icon,body.printing.theme-glass .pay-icon,
+body.printing.theme-dark .contact-icon,body.printing.theme-glass .contact-icon{color:#079d8f!important}
+body.printing.theme-dark .contact,body.printing.theme-glass .contact{color:#40546b!important}
+body.printing.theme-dark .terms-list li::before,body.printing.theme-glass .terms-list li::before{border-color:#079d8f!important}
+/* Pita dekorasi dimunculkan lagi khusus saat mencetak */
+body.printing.theme-dark .top-decoration,body.printing.theme-glass .top-decoration{display:block!important}
+body.printing.theme-dark .shape-yellow,body.printing.theme-glass .shape-yellow{display:block!important;background:#f5b41b!important}
+body.printing.theme-dark .shape-green,body.printing.theme-glass .shape-green{display:block!important;background:#079d8f!important}
+body.printing.theme-dark .pay-method,body.printing.theme-glass .pay-method{color:#15283d!important;background:transparent!important;background-image:none!important;border:none!important}
+/* Semua bayangan & blur dimatikan agar hasil cetak benar-benar
+   flat 2D seperti template tema Light. Termasuk .table-wrap yang
+   punya drop shadow tebal di belakang tabel. */
+body.printing .card *,body.printing .card{
+  box-shadow:none!important;filter:none!important;text-shadow:none!important;backdrop-filter:none!important;
+}
+body.printing .table-wrap{box-shadow:none!important}
+
+/* CSS PART 10/10 - PRINT */
+@page{size:A4 portrait;margin:0}
+@media print{
+  html,body{width:100%!important;background:#fff!important;padding:0!important;margin:0!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  body{font-size:11px;overflow:visible!important}
+  body::before,body::after,.sidebar,.actions,.modal-backdrop,.theme-switch-wrap,.m2-calc-popover,.tier-popover,.autocomplete-pop,.toast-wrap{display:none!important}
+  /* ===== PAKSA TEMA LIGHT UNTUK SEMUA TEMA SAAT MENCETAK =====
+     Selector sengaja TIDAK memakai prefiks .theme-dark/.theme-glass
+     agar berlaku universal — hasil cetak selalu sama persis. */
+  body,body.theme-dark,body.theme-glass{background:#fff!important;color:#15283d!important}
+  .invoice-frame,.card,table,tbody td,tbody tr:nth-child(even) td,
+  .billto,.totals-box,.pay-method-card,.terms-block{
+    background:#fff!important;box-shadow:none!important;
+    border-color:#e0e7e8!important;color:#15283d!important;backdrop-filter:none!important;
+  }
+  tbody tr:nth-child(even) td{background:#f7faf9!important}
+  thead th{background:#079d8f!important;color:#fff!important}
+  .t-row{border-bottom-color:#e8eeee!important;color:#15283d!important}
+  .t-row.total{background:#112f52!important;color:#fff!important}
+  .t-row.total .t-label,.t-row.total #totalOut{color:#fff!important}
+  .t-row.sisa{background:#eef8f7!important;color:#079d8f!important}
+  .company-name .navy-text,.billto input,td.jumlah,.terms-list li,
+  tbody input,tbody textarea,.contact input,.meta-row,.meta-row input,
+  .pay-method,.adjustment-row,.adjustment-row .t-label,.adjustment-output,
+  .t-label,.sig-item .sig-label{color:#15283d!important}
+  .inv-title,.company-name .teal-text,.terms-eyebrow,.billto label,
+  .bill-icon,.pay-icon,.contact-icon{color:#079d8f!important}
+  .contact{color:#40546b!important}
+  .sig-item .sig-name{color:#112f52!important}
+  .terms-list li::before{border-color:#079d8f!important}
+  .terms-list li::after{
+    content:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23079d8f' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'%3E%3C/polyline%3E%3C/svg%3E")!important;
+  }
+  .top-decoration{display:block!important}
+  .shape-yellow{display:block!important;background:#f5b41b!important}
+  .shape-green{display:block!important;background:#079d8f!important}
+  .shape-mist{display:none!important}
+  .lunas-stamp-text{color:#ef3d43!important;border-color:#ef3d43!important}
+  .lunas-stamp-text::after{border-color:#ef3d43!important}
+  /* Kunci layout desktop walau dicetak dari layar sempit */
+  .head{flex-direction:row!important;align-items:flex-start!important}

@@ -1,0 +1,97 @@
+/* CSS PART 04/10 */
+body.theme-dark .pay-method option{background:#0a1a19;color:#e6efee;padding:8px 10px}
+body.theme-dark .terms-block{background:rgba(255,255,255,.03);border-color:rgba(255,255,255,.07);box-shadow:none}
+body.theme-dark .terms-eyebrow{color:#2ecfba}
+body.theme-dark .terms-list li{color:#cfdedc}
+body.theme-dark .terms-list li::before{border-color:#2ecfba}
+body.theme-dark .terms-list li::after{content:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%232ecfba' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'%3E%3C/polyline%3E%3C/svg%3E")}
+body.theme-dark .terms-list li:focus{background:rgba(46,207,186,.1)}
+body.theme-dark input::placeholder,body.theme-dark textarea::placeholder{color:#63807d}
+body.theme-dark .modal{background:#0a1a19;border-color:rgba(255,255,255,.08);box-shadow:0 40px 90px rgba(0,0,0,.65)}
+body.theme-dark .modal-head{border-bottom-color:rgba(255,255,255,.07);background:linear-gradient(135deg, rgba(46,207,186,.1), transparent)}
+body.theme-dark .modal-title{color:#eef5f4}
+body.theme-dark .modal-sub{color:#94adaa}
+body.theme-dark .modal-close{background:rgba(255,255,255,.07);color:#e2ecea}
+body.theme-dark .modal-close:hover{background:rgba(255,255,255,.12)}
+body.theme-dark .field label{color:#dbe7e6}
+body.theme-dark .field input,body.theme-dark .field textarea{background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.1);color:#e6efee}
+body.theme-dark .field input:focus,body.theme-dark .field textarea:focus{border-color:#2ecfba;box-shadow:0 0 0 3px rgba(46,207,186,.14)}
+body.theme-dark .field .hint{color:#8ea6a3}
+body.theme-dark .modal-foot{background:rgba(255,255,255,.025);border-top-color:rgba(255,255,255,.07)}
+body.theme-dark .modal-btn{background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.1);color:#e2ecea}
+body.theme-dark .modal-btn:hover{background:rgba(255,255,255,.1)}
+body.theme-dark .modal-btn.primary{background:linear-gradient(135deg, #0b6a60, #0a8377);border-color:transparent;color:#eafffb}
+body.theme-dark .settings-status{color:#2ecfba}
+
+.theme-switch-wrap{
+  margin-top:8px;margin-bottom:0;padding:10px 10px 8px;
+  display:flex;flex-direction:column;gap:8px;
+  border-radius:12px;background:rgba(255,255,255,.4);border:1px solid rgba(255,255,255,.55);
+}
+.theme-switch-label{display:flex;align-items:center;gap:9px;font-size:11px;font-weight:800;letter-spacing:.2px;color:var(--navy)}
+.theme-switch-label svg{width:16px;height:16px;flex:none;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.theme-options{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;padding:4px;border-radius:10px;background:rgba(17,47,82,.08)}
+.theme-opt{border:none;cursor:pointer;padding:7px 4px;border-radius:8px;background:transparent;color:var(--navy);display:flex;align-items:center;justify-content:center;transition:background .18s ease, color .18s ease, box-shadow .18s ease, transform .18s ease}
+.theme-opt svg{width:16px;height:16px;display:block;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.theme-opt:hover{background:rgba(255,255,255,.45);transform:translateY(-1px)}
+.theme-opt.active{background:#fff;color:var(--teal);box-shadow:0 4px 12px rgba(17,47,82,.14)}
+body.theme-dark .theme-switch-wrap{background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.09)}
+body.theme-dark .theme-switch-label{color:#dbe7e6}
+body.theme-dark .theme-options{background:rgba(255,255,255,.06)}
+body.theme-dark .theme-opt{color:#c3d6d3}
+body.theme-dark .theme-opt:hover{background:rgba(255,255,255,.08)}
+body.theme-dark .theme-opt.active{background:rgba(46,207,186,.18);color:#2ecfba;box-shadow:inset 0 0 0 1px rgba(46,207,186,.42)}
+body.theme-glass .theme-switch-wrap{background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.12);backdrop-filter:blur(10px)}
+body.theme-glass .theme-switch-label{color:#e2efee}
+body.theme-glass .theme-options{background:rgba(0,0,0,.22)}
+body.theme-glass .theme-opt{color:#d3e6e3}
+body.theme-glass .theme-opt:hover{background:rgba(255,255,255,.16)}
+body.theme-glass .theme-opt.active{background:rgba(62,224,201,.24);color:#b7fbee;box-shadow:inset 0 0 0 1px rgba(62,224,201,.55)}
+
+/* CSS PART 04/10 - GLASS THEME */
+/* Latar glass: hijau zamrud gelap yang tenang.
+   Versi lama memakai banyak warna (jingga, ungu, merah muda) yang
+   terlalu ramai dan mengganggu keterbacaan invoice. Sekarang satu
+   keluarga warna saja agar isi dokumen tetap jadi fokus utama. */
+body.theme-glass{
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='.05'/%3E%3C/svg%3E"),
+    radial-gradient(ellipse 58% 46% at 12% 26%, rgba(18,132,120,.30) 0%, transparent 62%),
+    radial-gradient(ellipse 52% 42% at 88% 74%, rgba(14,104,98,.26) 0%, transparent 64%),
+    radial-gradient(ellipse 74% 38% at 50% 104%, rgba(22,150,132,.20) 0%, transparent 66%),
+    radial-gradient(ellipse 40% 30% at 78% 6%, rgba(30,168,148,.14) 0%, transparent 70%),
+    linear-gradient(158deg, #0b201e 0%, #081716 42%, #050f0e 74%, #040c0b 100%);
+  background-attachment:fixed;color:#eaf3f7;
+}
+body.theme-glass::before{width:620px;height:620px;left:-200px;top:-220px;background:radial-gradient(circle, rgba(30,170,150,.20), rgba(20,120,108,.06) 46%, transparent 70%);filter:blur(40px)}
+body.theme-glass::after{width:700px;height:700px;right:-240px;bottom:-290px;background:radial-gradient(circle, rgba(22,140,126,.18), rgba(16,100,92,.05) 48%, transparent 72%);filter:blur(44px)}
+body.theme-glass .sidebar{background:linear-gradient(160deg, rgba(14,42,40,.62), rgba(7,24,23,.55));border-color:rgba(255,255,255,.08);border-radius:22px;box-shadow:0 30px 70px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.07);backdrop-filter:blur(26px) saturate(130%)}
+body.theme-glass .sidebar::before{display:none}
+body.theme-glass .head{padding-top:8px;border-bottom:none}
+body.theme-glass .sidebar-title{color:#f2fbfa}
+body.theme-glass .sidebar-title span{color:#2ecfba}
+body.theme-glass .actions::before,body.theme-glass .sidebar-footer::before{background:rgba(255,255,255,.08);box-shadow:none}
+body.theme-glass .btn{color:#dfeceb}
+body.theme-glass .btn:hover,body.theme-glass .btn:focus-visible{
+  background:linear-gradient(100deg, rgba(46,207,186,.15), rgba(46,207,186,.04));
+  border-color:rgba(62,224,201,.6);
+  box-shadow:0 0 0 3px rgba(46,207,186,.07), 0 8px 26px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.06);
+  color:#8ff0e0;
+}
+body.theme-glass .btn:hover .btn-icon,body.theme-glass .btn:focus-visible .btn-icon{
+  background:rgba(46,207,186,.13);
+  box-shadow:inset 0 0 0 1.5px rgba(62,224,201,.65), 0 0 16px rgba(46,207,186,.18);
+  color:#3ee0c9 !important;
+}
+body.theme-glass .btn-outline-red:hover,body.theme-glass .btn-outline-red:focus-visible{
+  background:linear-gradient(100deg, rgba(239,61,67,.16), rgba(239,61,67,.05));
+  border-color:rgba(239,61,67,.5);color:#ff9b9e;
+}
+body.theme-glass .btn-outline-red:hover .btn-icon,body.theme-glass .btn-outline-red:focus-visible .btn-icon{
+  background:rgba(239,61,67,.12);
+  box-shadow:inset 0 0 0 1.5px rgba(239,61,67,.5);color:#ff9b9e !important;
+}
+body.theme-glass .btn-settings::before{background:rgba(255,255,255,.09)}
+body.theme-glass .btn-primary{background:linear-gradient(150deg, rgba(13,62,58,.85), rgba(8,38,38,.7));border:1px solid rgba(46,207,186,.55);color:#8fe8d8;box-shadow:0 0 22px rgba(46,207,186,.14), inset 0 1px 0 rgba(255,255,255,.06);backdrop-filter:blur(10px)}
+body.theme-glass .btn-primary:hover{background:linear-gradient(150deg, rgba(16,78,72,.9), rgba(10,48,46,.78));color:#b7f5e8}
+

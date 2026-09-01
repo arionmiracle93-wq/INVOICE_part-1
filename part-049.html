@@ -1,0 +1,174 @@
+  }).join('\n');
+}
+
+/* Beralih antara tampilan tabel dan mode teks mentah */
+function toggleCatalogMode(){
+  catalogTextMode = !catalogTextMode;
+  const vis = document.getElementById('catVisual');
+  const txt = document.getElementById('catText');
+  const btn = document.getElementById('catModeBtn');
+  if(catalogTextMode){
+    syncCatalogTextarea();
+    vis.style.display = 'none';
+    txt.style.display = 'block';
+    btn.classList.add('active');
+    btn.textContent = 'Mode Tabel';
+  } else {
+    /* Teks -> array. Mode teks tidak menampilkan kategori & gambar,
+       jadi keduanya diambil kembali dari data lama berdasarkan nama
+       agar tidak ikut terhapus. */
+    const ta = document.getElementById('setCatalog');
+    const before = {};
+    catalogDraft.forEach(function(it){
+      if(it.name) before[String(it.name).trim().toLowerCase()] = it;
+    });
+    catalogDraft = parseCatalogText(ta ? ta.value : '').map(function(it){
+      const old = before[String(it.name).trim().toLowerCase()];
+      if(old){ it.category = old.category || ''; it.image = old.image || ''; }
+      return it;
+    });
+    vis.style.display = 'block';
+    txt.style.display = 'none';
+    btn.classList.remove('active');
+    btn.textContent = 'Mode Teks';
+    renderCatalogEditor();
+  }
+}
+
+/* ▸ GALERI KATALOG PRODUK ─────────────────────────────────────
+   Tampilan grid untuk memilih produk lalu memasukkannya ke baris
+   invoice. Melengkapi editor katalog di Pengaturan — keduanya
+   membaca sumber data yang sama (productCatalog).
+
+   Struktur satu produk:
+     { name, description, harga, tiers, category, image }
+   Dua field terakhir bersifat baru & opsional, jadi katalog lama
+   tetap terbaca tanpa perlu diubah.
+
+   CATATAN PENYIMPANAN:
+   Gambar disimpan sebagai data URL di localStorage yang hanya
+   ~5 MB. Karena itu setiap gambar dikecilkan otomatis (maks
+   400 px, JPEG mutu 0,72) sehingga rata-rata 15-40 KB.
+   ─────────────────────────────────────────────────────────── */
+const PRODUCT_IMG_MAX = 400;      /* sisi terpanjang, piksel */
+const PRODUCT_IMG_QUALITY = 0.72;
+/* Dideklarasikan di sini karena openGallery() memakainya lebih
+   awal — const tidak ter-hoisting seperti function. */
+const GAL_FULL_KEY = 'pp_invoice_gallery_full_v1';
+const ICON_EXPAND = '<polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/>';
+const ICON_SHRINK = '<polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="14" y1="10" x2="21" y2="3"/><line x1="3" y1="21" x2="10" y2="14"/>';
+let galleryCat = '__all';         /* kategori yang sedang dipilih */
+let pfIndex = -1;                 /* -1 = produk baru */
+let pfImage = '';                 /* data URL gambar pada formulir */
+
+/* Daftar kategori tersimpan di pengaturan */
+function getCategories(){
+  const s = readStoredSettings() || {};
+  return Array.isArray(s.categories) ? s.categories.filter(Boolean) : [];
+}
+function saveCategories(list){
+  try{
+    const s = readStoredSettings() || {};
+    s.categories = list.slice(0, 40);
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(s));
+    try{ markCloudDirty(); }catch(e){}
+    return true;
+  }catch(err){
+    showToast('Gagal menyimpan kategori — penyimpanan penuh', 'error');
+    return false;
+  }
+}
+/* Kategori yang benar-benar dipakai produk, digabung dengan
+   kategori buatan pengguna */
+function allCategories(){
+  const set = new Set(getCategories());
+  getCatalog().forEach(function(p){ if(p && p.category && !p.deleted) set.add(p.category); });
+  return Array.from(set).sort(function(a,b){ return a.localeCompare(b,'id'); });
+}
+/* Produk yang masih aktif — dipakai untuk tampilan & autocomplete */
+function activeCatalog(){
+  return getCatalog().filter(function(p){ return p && !p.deleted; });
+}
+
+/* ---------- Kompresi gambar ----------
+   Bila pengecilan gagal karena alasan apa pun, berkas asli tetap
+   dipakai selama ukurannya masih wajar — lebih baik gambar besar
+   daripada tidak ada gambar sama sekali. */
+function compressImage(file, cb){
+  const reader = new FileReader();
+
+  reader.onload = function(e){
+    const original = e.target.result;
+    if(!original || String(original).indexOf('data:image') !== 0){
+      showToast('Berkas bukan gambar yang dikenali', 'error');
+      return;
+    }
+
+    /* Cadangan bila proses pengecilan tidak selesai */
+    const useOriginal = function(reason){
+      const size = original.length * 2;
+      if(size > 900 * 1024){
+        showToast('Gambar tidak dapat dikecilkan dan ukurannya terlalu besar. Coba berkas lain.', 'error');
+        console.warn('compressImage gagal:', reason);
+        return;
+      }
+      console.warn('compressImage memakai berkas asli:', reason);
+      cb(original);
+    };
+
+    let done = false;
+    const finish = function(dataUrl){ if(!done){ done = true; cb(dataUrl); } };
+
+    const img = new Image();
+    img.onload = function(){
+      if(done) return;
+      try{
+        let w = img.naturalWidth || img.width;
+        let h = img.naturalHeight || img.height;
+        if(!w || !h){ done = true; useOriginal('dimensi tidak terbaca'); return; }
+        const scale = Math.min(1, PRODUCT_IMG_MAX / Math.max(w, h));
+        w = Math.max(1, Math.round(w * scale));
+        h = Math.max(1, Math.round(h * scale));
+        const cv = document.createElement('canvas');
+        cv.width = w; cv.height = h;
+        const ctx = cv.getContext('2d');
+        /* Latar putih supaya PNG transparan tidak jadi hitam
+           saat dikonversi ke JPEG */
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, w, h);
+        ctx.drawImage(img, 0, 0, w, h);
+        const out = cv.toDataURL('image/jpeg', PRODUCT_IMG_QUALITY);
+        if(out && out.length > 32) finish(out);
+        else { done = true; useOriginal('hasil kanvas kosong'); }
+      }catch(err){ done = true; useOriginal(err); }
+    };
+    img.onerror = function(){ if(!done){ done = true; useOriginal('gambar gagal dimuat'); } };
+    /* Jaring pengaman bila onload/onerror tidak pernah terpanggil */
+    setTimeout(function(){ if(!done){ done = true; useOriginal('waktu habis'); } }, 6000);
+    img.src = original;
+  };
+
+  reader.onerror = function(){ showToast('Gagal membaca berkas', 'error'); };
+  reader.readAsDataURL(file);
+}
+
+/* ---------- Galeri ---------- */
+function openGallery(){
+  getCatalog();
+  galleryCat = '__all';
+  const s = document.getElementById('galSearch');
+  if(s) s.value = '';
+  /* Kembalikan mode ukuran yang terakhir dipakai */
+  let full = false;
+  try{ full = localStorage.getItem(GAL_FULL_KEY) === '1'; }catch(e){}
+  applyGalleryFull(full);
+  /* Modal ditampilkan LEBIH DULU, baru isinya dirender.
+     Bila urutannya terbalik, gambar dirender saat wadahnya masih
+     display:none dan browser bisa menunda penampilannya. */
+  document.getElementById('galleryModal').classList.add('open');
+  renderGallery();
+  setTimeout(function(){ if(s) s.focus(); }, 80);
+}
+function closeGallery(){ document.getElementById('galleryModal').classList.remove('open'); }
+
+/* Mode layar penuh — pilihannya diingat antar sesi.

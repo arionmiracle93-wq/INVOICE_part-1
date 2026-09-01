@@ -1,0 +1,149 @@
+const DEFAULT_LOGO_SVG =
+  '<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">'
+  + '<path d="M2 58 L22 30 L22 58 Z" fill="#f5b41b"/>'
+  + '<path fill-rule="evenodd" clip-rule="evenodd" fill="#079d8f" '
+  + 'd="M10 6 H34 C43 6 50 13 50 22 C50 31 43 38 34 38 H22 V58 H10 Z '
+  + 'M22 17 H33 C36 17 38 19 38 22 C38 25 36 27 33 27 H22 Z"/>'
+  + '</svg>';
+
+let logoData = '';   /* data URL logo kustom, kosong = pakai bawaan */
+
+function logoMarkup(){
+  return logoData
+    ? '<img src="' + logoData + '" alt="Logo">'
+    : DEFAULT_LOGO_SVG;
+}
+function renderLogos(){
+  const html = logoMarkup();
+  ['logoSidebar', 'logoInvoice'].forEach(function(id){
+    const el = document.getElementById(id);
+    if(el) el.innerHTML = html;
+  });
+  /* Pratinjau di modal Pengaturan */
+  const box = document.getElementById('logoPreview');
+  const img = document.getElementById('logoPreviewImg');
+  if(box && img){
+    if(logoData){ img.src = logoData; box.classList.add('visible'); }
+    else box.classList.remove('visible');
+  }
+}
+function removeLogo(){
+  logoData = '';
+  const inp = document.getElementById('setLogoFile');
+  if(inp){
+    inp.value = '';
+    const wrap = inp.nextElementSibling;
+    const nm = wrap && wrap.querySelector('.file-name');
+    if(nm){ nm.textContent = 'Belum ada file'; wrap.classList.remove('has-file'); }
+  }
+  renderLogos();
+  showToast('Logo dikembalikan ke bawaan');
+}
+
+/* ▸ TTD & STEMPEL ─────────────────────────────────────────── */
+let sigData = '', stampData = '';
+function readImageFile(input, callback){
+  const file = input.files && input.files[0];
+  if(!file) return;
+  if(file.size > 800 * 1024){ showToast('Gambar terlalu besar, maksimal 800KB', 'error'); input.value = ''; return; }
+  const wrapper = input.nextElementSibling;
+  const fileNameEl = wrapper.querySelector('.file-name');
+  if(fileNameEl){ fileNameEl.textContent = file.name; wrapper.classList.add('has-file'); }
+  const reader = new FileReader();
+  reader.onload = function(e){ callback(e.target.result); };
+  reader.readAsDataURL(file);
+}
+function refreshSigPreviews(){
+  const sigBox = document.getElementById('sigPreview'), sigImg = document.getElementById('sigPreviewImg');
+  if(sigData){ sigImg.src = sigData; sigBox.classList.add('visible'); } else sigBox.classList.remove('visible');
+  const stampBox = document.getElementById('stampPreview'), stampImg = document.getElementById('stampPreviewImg');
+  if(stampData){ stampImg.src = stampData; stampBox.classList.add('visible'); } else stampBox.classList.remove('visible');
+}
+function removeSignature(){
+  sigData = '';
+  document.getElementById('setSignatureFile').value = '';
+  const wrapper = document.getElementById('setSignatureFile').nextElementSibling;
+  const fileNameEl = wrapper.querySelector('.file-name');
+  if(fileNameEl){ fileNameEl.textContent = 'Belum ada file'; wrapper.classList.remove('has-file'); }
+  refreshSigPreviews();
+}
+function removeStamp(){
+  stampData = '';
+  document.getElementById('setStampFile').value = '';
+  const wrapper = document.getElementById('setStampFile').nextElementSibling;
+  const fileNameEl = wrapper.querySelector('.file-name');
+  if(fileNameEl){ fileNameEl.textContent = 'Belum ada file'; wrapper.classList.remove('has-file'); }
+  refreshSigPreviews();
+}
+
+/* ---------- Render signature block ---------- */
+function renderSignatureBlock(settings){
+  const s = settings || {};
+  const block = document.getElementById('signatureBlock');
+  const sigBox = document.getElementById('companySigBox'), sigImg = document.getElementById('companySigImg');
+  const stampBoxEl = document.getElementById('stampBox'), stampImgEl = document.getElementById('stampImg');
+  const useSig = !!s.signature, useStamp = !!s.stamp;
+  sigBox.style.display = useSig ? 'block' : 'none';
+  if(useSig) sigImg.src = s.signature;
+  stampBoxEl.style.display = useStamp ? 'block' : 'none';
+  if(useStamp) stampImgEl.src = s.stamp;
+  block.classList.toggle('visible', useSig || useStamp);
+}
+document.getElementById('setLogoFile').addEventListener('change', function(){ readImageFile(this, function(d){ logoData = d; renderLogos(); }); });
+document.getElementById('setSignatureFile').addEventListener('change', function(){ readImageFile(this, function(d){ sigData = d; refreshSigPreviews(); }); });
+document.getElementById('setStampFile').addEventListener('change', function(){ readImageFile(this, function(d){ stampData = d; refreshSigPreviews(); }); });
+
+/* ▸ PENGATURAN ────────────────────────────────────────────── */
+const SETTINGS_KEY = 'pp_invoice_settings_v1';
+const DEFAULT_SETTINGS = {
+  addr1: 'Pamulang Permai Blok SH 2 No.11',
+  addr2: 'Pamulang Barat, Tangerang Selatan 15417',
+  email: 'pamulangprinting@gmail.com',
+  wa: '0899 8700 985',
+  terms: [
+    'Pembatalan order karena kesalahan kami, maka kami bertanggung jawab sepenuhnya',
+    'Barang yang sudah di ACC tidak dapat ditukar atau dikembalikan',
+    'Pembayaran lunas (cash/transfer) untuk DP minimal 50% dari harga total',
+    'Pengambilan max. 1 minggu, lebih dari itu bukan tanggung jawab kami'
+  ],
+  catalog: [],
+  categories: [],
+  signature: '',
+  stamp: '',
+  logo: '',
+  banks: [{bank:'BCA', no:'', an:'Pamulang Printing'}],
+  qris: '',
+  uniqueCode: false,
+  payNote: 'Mohon kirim bukti transfer ke WhatsApp kami untuk verifikasi.',
+  dueDays: 0,
+  /* Nama kunci warisan (dulu khusus tunai) — dipertahankan agar
+     pengaturan yang sudah tersimpan di perangkat tidak hilang.
+     Sekarang berlaku untuk semua metode pembayaran. */
+  cashConfirm: true,      /* tanya status lunas saat menyimpan invoice */
+  cashThreshold: 10000,   /* di bawah nilai ini tidak ditanya (boleh bayar saat ambil) */
+  /* Unduhan JSON otomatis dimatikan secara bawaan: datanya sudah
+     tersimpan di Riwayat, file Backup, dan Cloud — file per invoice
+     hanya membuat folder unduhan menumpuk. */
+  autoDownloadJson: false
+};
+
+function currentTermsFromDom(){ return Array.from(document.querySelectorAll('#termsList li')).map(function(li){ return li.textContent.trim(); }).filter(Boolean); }
+function applySettings(s){
+  if(!s) return;
+  if(s.addr1 !== undefined) document.getElementById('addrLine1').value = s.addr1;
+  if(s.addr2 !== undefined) document.getElementById('addrLine2').value = s.addr2;
+  if(s.email !== undefined) document.getElementById('emailLine').value = s.email;
+  if(s.wa !== undefined) document.getElementById('waLine').value = s.wa;
+  if(Array.isArray(s.terms) && s.terms.length){
+    document.getElementById('termsList').innerHTML = s.terms.map(function(t){ return '<li>' + escapeHtml(t) + '</li>'; }).join('');
+  }
+  if(Array.isArray(s.catalog)) productCatalog = s.catalog.filter(function(i){ return i && i.name; });
+  sigData = s.signature !== undefined ? (s.signature || '') : sigData;
+  stampData = s.stamp !== undefined ? (s.stamp || '') : stampData;
+  logoData = s.logo !== undefined ? (s.logo || '') : logoData;
+  renderLogos();
+  refreshSigPreviews();
+  renderSignatureBlock(s);
+  try{ renderPaymentPanel(); }catch(e){}
+}
+function readStoredSettings(){ try{ const raw = localStorage.getItem(SETTINGS_KEY); return raw ? JSON.parse(raw) : null; }catch(err){ return null; } }

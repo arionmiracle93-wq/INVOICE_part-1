@@ -1,0 +1,158 @@
+    b.classList.toggle('active', b.dataset.f === f);
+  });
+  renderHistory();
+}
+function renderARSummary(){
+  const items = readHistory();
+  let due = 0, paid = 0, late = 0;
+  items.forEach(function(it){
+    const p = historyPayable(it);
+    const total = Number((it.data && it.data.totalAmount) || it.totalAmount || 0);
+    if(p.lunas){ paid += total; return; }
+    due += p.base;
+    paid += p.paid;                           /* DP + cicilan yang sudah masuk */
+    const n = daysUntil((it.data && it.data.invDue) || it.invDue);
+    if(n !== null && n < 0) late += p.base;   /* sudah lewat jatuh tempo */
+  });
+  const set = function(id, v){ const el = document.getElementById(id); if(el) el.textContent = v; };
+  set('arDueAmt', formatRp(due));
+  set('arLateAmt', formatRp(late));
+  set('arPaidAmt', formatRp(paid));
+}
+
+function renderHistory(){
+  const list = document.getElementById('historyList');
+  const items = readHistory();
+  renderARSummary();
+  if(!items.length){
+    list.innerHTML = '<div class="history-empty">Belum ada invoice tersimpan. Gunakan menu Simpan untuk menambahkan invoice ke riwayat.</div>';
+    const c = document.getElementById('histCount'); if(c) c.textContent = '';
+    return;
+  }
+
+  const qEl = document.getElementById('historySearch');
+  const raw = qEl ? String(qEl.value || '').trim() : '';
+  const q = raw.toLowerCase();
+  const digits = raw.replace(/[^0-9]/g, '');
+
+  const rows = items.map(function(item, index){
+    return {item: item, index: index, pay: historyPayable(item)};
+  }).filter(function(r){
+    /* Filter status lebih dulu */
+    if(historyFilter === 'due' && r.pay.lunas) return false;
+    if(historyFilter === 'paid' && !r.pay.lunas) return false;
+    if(historyFilter === 'late'){
+      if(r.pay.lunas) return false;
+      const n = daysUntil((r.item.data && r.item.data.invDue) || r.item.invDue);
+      if(n === null || n >= 0) return false;
+    }
+    if(!q) return true;
+    const it = r.item, p = r.pay;
+    /* Cocokkan teks: nomor invoice / nama pelanggan */
+    if(String(it.invNo || '').toLowerCase().includes(q)) return true;
+    if(String(it.custName || '').toLowerCase().includes(q)) return true;
+    if(!digits) return false;
+    /* Cocokkan angka: nominal penuh, nominal transfer, atau kode unik */
+    const payStr = String(p.payable);
+    const totStr = String(Math.round(Number(it.totalAmount) || 0));
+    if(payStr === digits || totStr === digits) return true;
+    if(p.code && String(p.code) === digits) return true;
+    /* Ketik 3 digit terakhir saja */
+    if(digits.length <= 3 && p.code && String(p.code).padStart(3,'0') === digits.padStart(3,'0')) return true;
+    if(digits.length >= 4 && (payStr.endsWith(digits) || totStr.endsWith(digits))) return true;
+    return false;
+  });
+
+  const cnt = document.getElementById('histCount');
+  if(cnt) cnt.textContent = 'Menampilkan ' + rows.length + ' dari ' + items.length + ' invoice';
+
+  if(!rows.length){
+    list.innerHTML = raw
+      ? '<div class="history-empty">Tidak ada invoice yang cocok dengan <b>' + escapeHtml(raw) + '</b>.<br>Coba ketik nominal penuh, 3 digit kode unik, atau nama pelanggan.</div>'
+      : '<div class="history-empty">Tidak ada invoice pada filter ini.</div>';
+    return;
+  }
+
+  list.innerHTML = rows.map(function(r){
+    const item = r.item, p = r.pay, index = r.index;
+    /* Tandai bila nominal transfer cocok persis dengan yang dicari */
+    const exact = digits && String(p.payable) === digits;
+
+    /* Status jatuh tempo */
+    const dueStr = (item.data && item.data.invDue) || item.invDue || '';
+    const st = dueStatus(dueStr, p.lunas);
+    const overdue = st && st.kind === 'late';
+
+    let badges = '';
+    if(p.lunas) badges += '<span class="hist-badge paid">LUNAS</span>';
+    else if(p.payable > 0) badges += '<span class="hist-badge due">BELUM LUNAS</span>';
+    if(st && !p.lunas && (st.kind === 'late' || st.kind === 'today')){
+      badges += '<span class="hist-badge ' + st.kind + '">' + escapeHtml(st.label.toUpperCase()) + '</span>';
+    } else if(st && !p.lunas && st.kind === 'soon'){
+      badges += '<span class="hist-badge code">' + escapeHtml(st.label) + '</span>';
+    }
+    if(p.count > 0){
+      badges += '<span class="hist-badge partial">' + p.count + 'x cicilan · dibayar ' + formatRp(p.paid) + '</span>';
+    } else if(p.dp > 0){
+      badges += '<span class="hist-badge code">DP ' + formatRp(p.dp) + '</span>';
+    }
+    if(p.code) badges += '<span class="hist-badge ' + (exact ? 'hit' : 'code') + '">Transfer ' + formatRp(p.payable) + '</span>';
+
+    return '<div class="history-item' + (exact ? ' match' : '') + (overdue ? ' overdue' : '') + '"><div class="history-main">'
+      + '<div class="history-no">' + escapeHtml(item.invNo || 'Tanpa nomor') + '</div>'
+      + '<div class="history-customer">' + escapeHtml(item.custName || 'Tanpa nama customer') + '</div>'
+      + '<div class="history-meta">' + escapeHtml(item.invDate || '') + ' · ' + escapeHtml(formatHistoryDate(item.savedAt)) + '</div>'
+      + (badges ? '<div class="hist-badges">' + badges + '</div>' : '')
+      + '</div><div class="history-total">' + formatRp(item.totalAmount || 0) + '</div>'
+      + '<div class="history-actions">'
+      + (p.lunas ? '' : '<button class="history-action bill" onclick="openBillReminder(' + index + ')" title="Kirim pengingat tagihan">Tagih</button>')
+      + '<button class="history-action dup" onclick="duplicateInvoice(' + index + ')">Duplikat</button>'
+      + '<button class="history-action" onclick="downloadHistoryJSON(' + index + ')" title="Unduh file JSON invoice ini">JSON</button>'
+      + '<button class="history-action" onclick="loadHistoryItem(' + index + ')">Buka</button>'
+      + '<button class="history-action delete" onclick="deleteHistoryItem(' + index + ')">Hapus</button>'
+      + '</div></div>';
+  }).join('');
+}
+function loadHistoryItem(index){
+  const item = readHistory()[index];
+  if(!item || !item.data) return;
+  applyInvoiceData(item.data);
+  closeHistory();
+  setAutosaveStatus('Invoice dari riwayat dimuat');
+  showToast('Invoice dimuat dari riwayat');
+}
+function duplicateInvoice(index){
+  const item = readHistory()[index];
+  if(!item || !item.data) return;
+  const newData = JSON.parse(JSON.stringify(item.data));
+  newData.invNo = nextInvoiceNumber(true);
+  const now = new Date();
+  newData.invDate = fmtDateID(now);
+  /* Tempo dihitung ulang dari tanggal hari ini, bukan menyalin
+     tanggal tempo invoice lama yang mungkin sudah lewat. */
+  const dd = parseInt((readStoredSettings() || {}).dueDays, 10) || 0;
+  newData.invDue = dd > 0 ? fmtDateID(new Date(now.getFullYear(), now.getMonth(), now.getDate() + dd)) : '';
+  newData.lunas = false; newData.lunasPos = null;
+  newData.discount = newData.discount || '';
+  newData.tax = newData.tax || '';
+  newData.dp = newData.dp || '';
+  newData.payments = [];        /* invoice baru = belum ada pembayaran */
+  applyInvoiceData(newData);
+  closeHistory();
+  setAutosaveStatus('Invoice diduplikasi dari riwayat');
+  showToast('Invoice diduplikasi dengan nomor baru');
+}
+function deleteHistoryItem(index){
+  const items = readHistory();
+  if(!items[index]) return;
+  items.splice(index, 1); writeHistory(items); renderHistory();
+  showToast('Invoice dihapus dari riwayat');
+}
+function clearHistory(){
+  const items = readHistory();
+  if(!items.length) return;
+  if(!confirm('Hapus semua riwayat invoice dari browser ini?')) return;
+  writeHistory([]); renderHistory();
+  showToast('Semua riwayat dihapus');
+}
+

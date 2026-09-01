@@ -1,0 +1,137 @@
+.gal-cats{display:flex;gap:6px;flex-wrap:wrap;padding:2px 0}
+.gal-cat{
+  border:1px solid #dfe8e8;background:#fff;color:var(--navy);
+  border-radius:999px;padding:6px 13px;font:inherit;font-size:11.5px;
+  font-weight:800;cursor:pointer;white-space:nowrap;
+  transition:all .16s ease;display:inline-flex;align-items:center;gap:6px;
+}
+.gal-cat:hover{background:var(--teal-pale);border-color:var(--teal)}
+.gal-cat.active{background:var(--teal);border-color:var(--teal);color:#fff}
+.gal-cat .n{font-size:9.5px;opacity:.75;font-variant-numeric:tabular-nums}
+.gal-cat.add{border-style:dashed;color:var(--teal);font-weight:750}
+
+/* Grid produk */
+/* grid-auto-rows:max-content + align-items:start WAJIB ada.
+   Tanpa keduanya, baris grid ikut meregang/mengempis mengikuti
+   tinggi wadah — kartu jadi dipaksa sependek ruang yang tersisa,
+   lalu isinya terpotong oleh overflow:hidden pada kartu. */
+.gal-grid{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));
+  grid-auto-rows:max-content;align-items:start;align-content:start;
+  gap:10px;max-height:46vh;overflow:auto;padding:3px;
+}
+
+/* ── Mode layar penuh untuk galeri ─────────────────────────────
+   Backdrop dibuat tanpa jarak tepi, kartu memenuhi layar, dan
+   grid mengambil sisa tinggi yang ada. */
+#galleryModal.full{padding:0}
+#galleryModal.full .modal{
+  max-width:100% !important;width:100% !important;
+  height:100vh;max-height:100vh;border-radius:0;
+  display:flex;flex-direction:column;
+}
+#galleryModal.full .modal-head,
+#galleryModal.full .modal-foot{flex:none;border-radius:0}
+#galleryModal.full .modal-body{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden}
+/* Grid mengisi sisa ruang, hanya bagian ini yang menggulir */
+#galleryModal.full .gal-grid{
+  max-height:none;flex:1;min-height:0;overflow:auto;
+  grid-template-columns:repeat(auto-fill,minmax(168px,1fr));
+  grid-auto-rows:max-content;align-items:start;align-content:start;
+  gap:12px;
+}
+#galleryModal.full .gal-card{min-height:196px}
+#galleryModal.full .gc-img{height:118px;min-height:118px}
+/* Kategori boleh menggulir mendatar bila banyak */
+#galleryModal.full .gal-cats{max-height:none;overflow-x:auto;flex-wrap:wrap}
+
+/* Tombol pengubah ukuran jendela */
+.gal-size-btn{
+  flex:none;width:34px;height:34px;border:none;border-radius:10px;
+  background:#f2f6f6;color:var(--navy);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:background .16s ease;
+}
+.gal-size-btn:hover{background:#e6eeee}
+.gal-size-btn svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.modal-head-actions{display:flex;align-items:center;gap:8px;flex:none}
+body.theme-dark .gal-size-btn{background:rgba(255,255,255,.07);color:#e2ecea}
+body.theme-dark .gal-size-btn:hover{background:rgba(217,164,65,.18);color:#e8c56a}
+body.theme-glass .gal-size-btn{background:rgba(255,255,255,.1);color:#eaf6f4}
+body.theme-glass .gal-size-btn:hover{background:rgba(255,255,255,.18)}
+/* min-height memastikan kartu tidak pernah lebih pendek dari
+   gambar + keterangan, apa pun perilaku grid di sekitarnya. */
+.gal-card{
+  border:1px solid #e3ebeb;border-radius:11px;background:#fbfdfd;
+  overflow:hidden;cursor:pointer;position:relative;
+  display:flex;flex-direction:column;min-height:172px;
+  transition:border-color .18s ease,box-shadow .18s ease,transform .18s cubic-bezier(.34,1.4,.64,1);
+}
+.gal-card:hover{border-color:var(--teal);transform:translateY(-2px);box-shadow:0 10px 24px rgba(7,157,143,.16)}
+.gal-card:active{transform:translateY(0) scale(.985)}
+/* PENTING: flex:none wajib ada.
+   .gal-card memakai flex-direction:column, dan di dalam kolom
+   flex sebuah anak boleh menyusut melampaui tinggi yang diminta.
+   Tanpa flex:none, .gc-img menyusut menjadi 0 px — gambar tetap
+   dimuat browser tetapi tidak terlihat sama sekali.
+   Gejalanya: "Dimuat tapi 0 ukuran" pada alat Periksa Gambar. */
+.gc-img{
+  height:96px;min-height:96px;flex:none;
+  background:#fff;
+  border-bottom:1px solid rgba(17,47,82,.07);
+  display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;
+  padding:5px;box-sizing:border-box;
+}
+/* Kotak tanpa gambar tetap memakai warna aksen lembut.
+   Memakai class (bukan :has) agar bekerja di semua browser. */
+.gc-img.empty{
+  background:linear-gradient(135deg,rgba(7,157,143,.09),rgba(7,157,143,.03));
+  border-bottom-color:transparent;padding:0;
+}
+/* object-fit:contain — gambar tampil UTUH, tidak dipotong.
+   Sisi yang tidak terisi dibiarkan menampilkan latar kotak,
+   sehingga produk tetap terlihat seluruhnya berapa pun rasio
+   gambarnya. (Sebelumnya memakai cover yang memangkas tepi.) */
+.gc-img img{
+  max-width:100%;max-height:100%;
+  width:auto;height:auto;
+  object-fit:contain;display:block;margin:auto;
+}
+.gc-img .ph{width:30px;height:30px;opacity:.35;fill:none;stroke:var(--teal);stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+/* Bila gambar gagal dimuat, tampilkan tanda agar tidak terlihat
+   seperti kartu kosong tanpa sebab. */
+.gc-img.broken::after{
+  content:"⚠ gambar rusak";font-size:9.5px;font-weight:750;
+  color:var(--red);opacity:.8;
+}
+.gc-body{padding:9px 10px 10px;display:flex;flex-direction:column;gap:3px;flex:1}
+.gc-name{font-size:12px;font-weight:800;color:var(--navy);line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.gc-desc{font-size:10px;color:var(--muted);line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gc-foot{display:flex;align-items:baseline;justify-content:space-between;gap:6px;margin-top:auto;padding-top:5px}
+.gc-price{font-size:12.5px;font-weight:850;color:var(--teal-dark);font-variant-numeric:tabular-nums}
+.gc-tier{font-size:8.5px;font-weight:850;padding:1.5px 5px;border-radius:999px;background:rgba(7,157,143,.14);color:var(--teal-dark);white-space:nowrap}
+.gc-edit{
+  position:absolute;top:6px;right:6px;width:24px;height:24px;
+  border:none;border-radius:7px;background:rgba(255,255,255,.92);
+  color:var(--navy);cursor:pointer;display:flex;align-items:center;
+  justify-content:center;opacity:0;transition:opacity .16s ease,background .16s ease;
+  box-shadow:0 2px 8px rgba(17,47,82,.16);
+}
+.gal-card:hover .gc-edit{opacity:1}
+.gc-edit:hover{background:#fff}
+.gc-edit svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.gc-cat{
+  position:absolute;top:6px;left:6px;font-size:8.5px;font-weight:850;
+  padding:2px 7px;border-radius:999px;background:rgba(17,47,82,.75);
+  color:#fff;white-space:nowrap;max-width:calc(100% - 40px);
+  overflow:hidden;text-overflow:ellipsis;
+}
+.gal-empty{padding:36px 16px;text-align:center;color:var(--muted);font-size:12.5px;line-height:1.7;grid-column:1/-1}
+.gal-empty svg{width:36px;height:36px;opacity:.4;margin-bottom:8px;fill:none;stroke:currentColor;stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round}
+.gal-count{font-size:11px;color:var(--muted)}
+
+/* Formulir produk */
+.pf-img-row{display:flex;gap:12px;align-items:flex-start}
+.pf-thumb{
+  width:104px;height:104px;flex:none;border-radius:11px;overflow:hidden;
+  border:1.5px dashed rgba(17,47,82,.18);background:rgba(17,47,82,.03);

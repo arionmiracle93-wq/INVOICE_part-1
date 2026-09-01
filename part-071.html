@@ -1,0 +1,135 @@
+  document.getElementById('setQris').value = '';
+  document.getElementById('setUniqueCode').checked = false;
+  document.getElementById('setPayNote').value = DEFAULT_SETTINGS.payNote;
+  document.getElementById('setDueDays').value = '';
+  document.getElementById('setCashConfirm').checked = true;
+  document.getElementById('setCashThreshold').value = DEFAULT_SETTINGS.cashThreshold.toLocaleString('id-ID');
+  document.getElementById('setAutoJson').checked = false;
+  sigData = ''; stampData = ''; logoData = '';
+  document.getElementById('setLogoFile').value = '';
+  document.getElementById('setSignatureFile').value = '';
+  document.getElementById('setStampFile').value = '';
+  renderLogos();
+  refreshSigPreviews();
+  renderSignatureBlock(DEFAULT_SETTINGS);
+  settingsStatus('Pengaturan dikembalikan ke default.');
+  showToast('Pengaturan dikembalikan ke default');
+}
+document.getElementById('settingsModal').addEventListener('mousedown', function(e){ if(e.target === this) closeSettings(); });
+document.getElementById('historyModal').addEventListener('mousedown', function(e){ if(e.target === this) closeHistory(); });
+document.addEventListener('keydown', function(e){
+  if(e.key !== 'Escape') return;
+  if(document.getElementById('sqlModal').classList.contains('open')) closeSqlModal();
+  else if(document.getElementById('productFormModal').classList.contains('open')) closeProductForm();
+  else if(document.getElementById('galleryModal').classList.contains('open')) closeGallery();
+  else if(document.getElementById('customerModal').classList.contains('open')) closeCustomerDialog();
+  else if(document.getElementById('payLedgerModal').classList.contains('open')) closePaymentLedger();
+  else if(document.getElementById('reportModal').classList.contains('open')) closeReport();
+  else if(document.getElementById('billModal').classList.contains('open')) closeBillReminder();
+  else if(document.getElementById('settingsModal').classList.contains('open')) closeSettings();
+  else if(document.getElementById('historyModal').classList.contains('open')) closeHistory();
+  else if(document.getElementById('backupModal').classList.contains('open')) closeBackup();
+});
+document.addEventListener('input', function(e){
+  if(e.target.closest('#settingsModal') || e.target.closest('#billModal')
+     || e.target.closest('#backupModal') || e.target.closest('#payLedgerModal')
+     || e.target.closest('#reportModal') || e.target.closest('#galleryModal')
+     || e.target.closest('#productFormModal') || e.target.closest('#sqlModal')) return;
+  if(e.target.closest('.tier-popover') || e.target.closest('.m2-calc-popover')) return;
+  if(e.target.id === 'invNo') syncInvoiceSequence(e.target.value);
+  scheduleAutosave();
+});
+document.addEventListener('change', function(e){
+  if(e.target.closest('#settingsModal') || e.target.closest('#backupModal')
+     || e.target.closest('#reportModal') || e.target.closest('#billModal')) return;
+  scheduleAutosave();
+});
+
+/* ▸ TEMA ──────────────────────────────────────────────────── */
+const THEME_KEY = 'pp_invoice_theme_v1';
+const THEMES = ['light','dark','glass'];
+const THEME_LABELS = {light:'Mode Terang', dark:'Mode Gelap', glass:'Mode Glass'};
+const THEME_ICONS = {
+  light: '<svg width="16" height="16" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>',
+  dark:  '<svg width="16" height="16" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>',
+  glass: '<svg width="16" height="16" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>'
+};
+function applyTheme(mode){
+  if(THEMES.indexOf(mode) === -1) mode = 'light';
+  document.body.classList.toggle('theme-dark', mode === 'dark');
+  document.body.classList.toggle('theme-glass', mode === 'glass');
+  const label = document.getElementById('themeLabel');
+  if(label) label.textContent = THEME_LABELS[mode];
+  const icon = document.getElementById('themeIcon');
+  if(icon) icon.innerHTML = THEME_ICONS[mode];
+  document.querySelectorAll('.theme-opt').forEach(function(btn){ btn.classList.toggle('active', btn.dataset.theme === mode); });
+  try{ syncThemeCards(); }catch(e){}
+}
+function setTheme(mode){ applyTheme(mode); try{ localStorage.setItem(THEME_KEY, mode); }catch(err){} }
+function loadTheme(){ let saved = null; try{ saved = localStorage.getItem(THEME_KEY); }catch(err){} applyTheme(THEMES.indexOf(saved) !== -1 ? saved : 'light'); }
+
+/* ▸ BACKUP & RESTORE ──────────────────────────────────────────
+   Satu file JSON berisi SEMUA data: pengaturan (alamat, S&K,
+   katalog, logo, TTD, stempel), riwayat invoice, daftar &
+   nomor WA pelanggan, nomor urut invoice, draft aktif, tema.
+   ─────────────────────────────────────────────────────────── */
+const BACKUP_FORMAT = 'pamulang-printing-invoice-backup';
+const BACKUP_VERSION = 1;
+/* Penanda versi aplikasi — perbarui bila ada perubahan berarti.
+   Ditampilkan di modal Backup & disertakan dalam file backup. */
+/* Angka di belakang tanggal adalah nomor revisi hari itu.
+   Berguna untuk memastikan browser tidak memuat versi lama:
+   bandingkan dengan yang tertulis di Backup & Restore. */
+const APP_VERSION = '2026.02.14-r8';
+const LAST_BACKUP_KEY = 'pp_invoice_last_backup_v1';
+let pendingBackup = null;
+let restoreMode = 'merge';
+
+function backupKeyMap(){
+  return {
+    settings: SETTINGS_KEY,
+    history: HISTORY_KEY,
+    customers: CUST_KEY,
+    phones: CUST_PHONE_KEY,
+    sequence: SEQUENCE_KEY,
+    draft: DRAFT_KEY,
+    theme: THEME_KEY
+  };
+}
+function readLS(key){
+  try{
+    const raw = localStorage.getItem(key);
+    if(raw == null) return null;
+    try{ return JSON.parse(raw); }catch(e){ return raw; }
+  }catch(e){ return null; }
+}
+function writeLS(key, value){
+  try{
+    if(value == null || value === ''){ localStorage.removeItem(key); return; }
+    localStorage.setItem(key, typeof value === 'string' ? value : JSON.stringify(value));
+  }catch(e){}
+}
+
+/* Bangun objek backup dari seluruh localStorage aplikasi */
+function buildBackupObject(){
+  const map = backupKeyMap();
+  return {
+    format: BACKUP_FORMAT,
+    version: BACKUP_VERSION,
+    app: 'Pamulang Printing Invoice',
+    appVersion: APP_VERSION,
+    exportedAt: new Date().toISOString(),
+    data: {
+      settings: readLS(map.settings) || null,
+      history: readLS(map.history) || [],
+      customers: readLS(map.customers) || [],
+      phones: readLS(map.phones) || {},
+      sequence: readLS(map.sequence) || {},
+      draft: readLS(map.draft) || null,
+      theme: readLS(map.theme) || 'light'
+    }
+  };
+}
+
+/* Hitung ringkasan isi backup / data lokal */
+function backupStats(obj){

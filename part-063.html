@@ -1,0 +1,169 @@
+/* ▸ LAPORAN BULANAN ───────────────────────────────────────────
+   Sumber data: riwayat invoice (HISTORY_KEY).
+   Periode ditentukan dari TANGGAL INVOICE bila terbaca; bila
+   tidak, jatuh ke tanggal simpan (savedAt) sebagai cadangan.
+   ─────────────────────────────────────────────────────────── */
+const MONTH_NAMES = ['Januari','Februari','Maret','April','Mei','Juni',
+                     'Juli','Agustus','September','Oktober','November','Desember'];
+let reportMonth = null;   /* format 'YYYY-MM' */
+
+function currentMonthKey(){
+  const n = new Date();
+  return n.getFullYear() + '-' + String(n.getMonth() + 1).padStart(2, '0');
+}
+function monthKeyOf(item){
+  const d = item.data || {};
+  const inv = parseDateID(d.invDate || item.invDate);
+  if(inv) return inv.getFullYear() + '-' + String(inv.getMonth() + 1).padStart(2, '0');
+  const saved = new Date(item.savedAt);
+  if(!isNaN(saved.getTime())) return saved.getFullYear() + '-' + String(saved.getMonth() + 1).padStart(2, '0');
+  return null;
+}
+function dayOfMonthOf(item){
+  const d = item.data || {};
+  const inv = parseDateID(d.invDate || item.invDate);
+  if(inv) return inv.getDate();
+  const saved = new Date(item.savedAt);
+  return isNaN(saved.getTime()) ? null : saved.getDate();
+}
+function shiftMonthKey(key, delta){
+  const p = String(key).split('-');
+  const d = new Date(parseInt(p[0], 10), parseInt(p[1], 10) - 1 + delta, 1);
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+}
+function monthLabel(key){
+  const p = String(key).split('-');
+  const m = parseInt(p[1], 10) - 1;
+  return (MONTH_NAMES[m] || '?') + ' ' + p[0];
+}
+
+/* Kumpulkan angka untuk satu bulan */
+function collectReport(key){
+  const items = readHistory().filter(function(it){ return monthKeyOf(it) === key; });
+  let omzet = 0, piutang = 0, terbayar = 0, lunasCount = 0;
+  const daily = {};
+  const products = {};
+  const customers = {};
+
+  items.forEach(function(it){
+    const d = it.data || {};
+    const total = Number(d.totalAmount || it.totalAmount || 0);
+    const p = historyPayable(it);
+    omzet += total;
+    terbayar += p.lunas ? total : p.paid;
+    if(!p.lunas) piutang += p.base;
+    if(p.lunas) lunasCount++;
+
+    const day = dayOfMonthOf(it);
+    if(day) daily[day] = (daily[day] || 0) + total;
+
+    const cust = String(d.custName || '').trim() || 'Tanpa nama';
+    if(!customers[cust]) customers[cust] = {amount:0, count:0};
+    customers[cust].amount += total;
+    customers[cust].count++;
+
+    (d.rows || []).forEach(function(r){
+      const nama = String(r.produk || '').trim();
+      if(!nama) return;
+      const key2 = nama.toLowerCase();
+      if(!products[key2]) products[key2] = {name:nama, amount:0, qty:0, count:0};
+      products[key2].amount += Number(r.amount) || 0;
+      products[key2].qty += parseNum(r.qty) || 0;
+      products[key2].count++;
+    });
+  });
+
+  const toSorted = function(obj, mapFn){
+    return Object.keys(obj).map(mapFn).sort(function(a,b){ return b.amount - a.amount; });
+  };
+  return {
+    key: key,
+    items: items,
+    count: items.length,
+    omzet: omzet,
+    piutang: piutang,
+    terbayar: terbayar,
+    lunasCount: lunasCount,
+    avg: items.length ? omzet / items.length : 0,
+    daily: daily,
+    products: toSorted(products, function(k){ return products[k]; }).slice(0, 6),
+    customers: toSorted(customers, function(k){
+      return {name:k, amount:customers[k].amount, count:customers[k].count};
+    }).slice(0, 5)
+  };
+}
+
+function deltaHTML(now, prev){
+  if(!prev){ return {cls:'flat', html:'<span>bulan lalu tidak ada data</span>'}; }
+  const diff = now - prev;
+  const pct = Math.round((diff / prev) * 100);
+  if(Math.abs(pct) < 1) return {cls:'flat', html:'<span>setara bulan lalu</span>'};
+  const up = diff > 0;
+  const arrow = up
+    ? '<svg viewBox="0 0 24 24"><polyline points="18 15 12 9 6 15"/></svg>'
+    : '<svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>';
+  return {cls: up ? 'up' : 'down', html: arrow + '<span>' + (up ? '+' : '') + pct + '% dari bulan lalu</span>'};
+}
+
+function barListHTML(rows, valueFn, subFn){
+  if(!rows.length) return '<div class="rep-empty">Belum ada data pada bulan ini.</div>';
+  const max = Math.max.apply(null, rows.map(function(r){ return r.amount; })) || 1;
+  return rows.map(function(r){
+    const pct = Math.max(2, Math.round((r.amount / max) * 100));
+    return '<div class="rep-item">'
+      + '<div class="rep-bar-row">'
+        + '<div class="rep-bar-name"><b>' + escapeHtml(r.name) + '</b>'
+          + (subFn ? ' <span class="rep-bar-sub">' + escapeHtml(subFn(r)) + '</span>' : '') + '</div>'
+        + '<div class="rep-bar-val">' + valueFn(r) + '</div>'
+      + '</div>'
+      + '<div class="rep-bar-track"><div class="rep-bar-fill" style="width:' + pct + '%"></div></div>'
+      + '</div>';
+  }).join('');
+}
+
+function renderReport(){
+  const rep = collectReport(reportMonth);
+  const prev = collectReport(shiftMonthKey(reportMonth, -1));
+
+  document.getElementById('repPeriod').textContent = monthLabel(reportMonth);
+  document.getElementById('repOmzet').textContent = formatRp(rep.omzet);
+  document.getElementById('repCount').textContent = rep.count;
+  document.getElementById('repAvg').textContent = formatRp(rep.avg);
+  document.getElementById('repPiutang').textContent = formatRp(rep.piutang);
+
+  const dO = deltaHTML(rep.omzet, prev.omzet);
+  const eO = document.getElementById('repOmzetDelta');
+  eO.className = 'kpi-delta ' + dO.cls; eO.innerHTML = dO.html;
+
+  const dC = deltaHTML(rep.count, prev.count);
+  const eC = document.getElementById('repCountDelta');
+  eC.className = 'kpi-delta ' + dC.cls; eC.innerHTML = dC.html;
+
+  /* Grafik harian */
+  const p = reportMonth.split('-');
+  const daysInMonth = new Date(parseInt(p[0],10), parseInt(p[1],10), 0).getDate();
+  const maxDay = Math.max.apply(null, Object.keys(rep.daily).map(function(k){ return rep.daily[k]; }).concat([0])) || 1;
+  let bars = '';
+  let bestDay = null, bestVal = 0;
+  for(let i = 1; i <= daysInMonth; i++){
+    const v = rep.daily[i] || 0;
+    if(v > bestVal){ bestVal = v; bestDay = i; }
+    const h = v ? Math.max(3, Math.round((v / maxDay) * 100)) : 2;
+    bars += '<div class="rep-day' + (v ? '' : ' empty') + '" style="height:' + h + '%" title="Tgl ' + i + ': ' + formatRp(v) + '"></div>';
+  }
+  document.getElementById('repDaily').innerHTML = bars;
+  document.getElementById('repDailyMid').textContent = Math.ceil(daysInMonth / 2);
+  document.getElementById('repDailyEnd').textContent = daysInMonth;
+  document.getElementById('repDailyNote').textContent = bestDay
+    ? ('Penjualan tertinggi tanggal ' + bestDay + ' · ' + formatRp(bestVal) + ' · ' + rep.lunasCount + ' dari ' + rep.count + ' invoice sudah lunas')
+    : 'Belum ada invoice pada bulan ini.';
+
+  /* Produk & pelanggan */
+  document.getElementById('repProducts').innerHTML = barListHTML(
+    rep.products,
+    function(r){ return formatRp(r.amount); },
+    function(r){ return '· ' + formatNum(r.qty, 0) + ' pcs'; }
+  );
+  document.getElementById('repCustomers').innerHTML = barListHTML(
+    rep.customers,
+    function(r){ return formatRp(r.amount); },
